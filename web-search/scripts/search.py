@@ -1,10 +1,10 @@
 """
-kana-skills: web_search
+kana-skills: web-search
 Real-time web search via Tavily API.
 """
 import os
-import sys
 import json
+import argparse
 
 def search(query: str, max_results: int = 5, include_domains: list[str] | None = None):
     """Execute web search, return structured results."""
@@ -45,11 +45,18 @@ def search(query: str, max_results: int = 5, include_domains: list[str] | None =
     }
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(json.dumps({"error": "Usage: python search.py <query> [max_results]"}, ensure_ascii=False))
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Search the web with Tavily.")
+    parser.add_argument("query", help="Search query string")
+    parser.add_argument("legacy_max_results", nargs="?", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--max-results", type=int, default=None, help="Maximum results to return")
+    parser.add_argument(
+        "--include-domain",
+        action="append",
+        dest="include_domains",
+        help="Restrict search to a domain. Repeat for multiple domains.",
+    )
+    args = parser.parse_args()
 
-    query = sys.argv[1]
-    max_results = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    result = search(query, max_results)
+    max_results = args.max_results or args.legacy_max_results or 5
+    result = search(args.query, max_results, args.include_domains)
     print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -24,16 +24,10 @@ Instructions for the agent here.
 
 | Field | Required | Description |
 |-------|----------|-------------|
+| `name` | **Yes** | Lowercase letters, digits, and hyphens (e.g. `api-review`). Should match the parent directory name. |
 | `description` | **Yes** | What the skill does and when the agent should invoke it. Must be non-empty. |
 
-A skill **without** `description` or with an **empty** `description` will **not** be loaded.
-
-### Optional Fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | No | Lowercase letters, digits, and hyphens (e.g. `api-review`). Falls back to the parent directory name if omitted. |
-| `disable-model-invocation` | No | Set to `true` to exclude this skill from the system prompt's available skill list. Currently **not recommended** — leave it out unless you are staging a file ahead of time. |
+A skill **without** `name` or `description`, or with an **empty** `description`, will **not** be loaded correctly.
 
 ---
 
@@ -70,6 +64,25 @@ description: |
   Checks compatibility, error contracts, and docs.
 ---
 ```
+
+Put trigger criteria in `description`, not in the body. The body is loaded only after the
+skill has already been selected, so it should focus on execution instructions.
+
+---
+
+## Skill Body
+
+Write the body as a compact operator guide for an agent that is already using the skill.
+Prefer sections like:
+
+- `Run`: the exact command or workflow to execute
+- `Parameters`: accepted inputs, defaults, and constraints
+- `Dependencies`: required environment variables and packages
+- `Handling Results`: how to interpret output, errors, truncation, or next steps
+
+Avoid a `When to Use` section in the body unless it helps choose between sub-workflows inside
+the same skill. Skill-to-skill pairing notes should stay loose and capability-based, not hard
+dependencies on another skill.
 
 ---
 
@@ -109,9 +122,8 @@ Before committing a new skill, verify:
 
 - [ ] `SKILL.md` exists at the skill root
 - [ ] Frontmatter is valid YAML between `---` delimiters
+- [ ] `name` is present and uses `kebab-case`
 - [ ] `description` is present and non-empty
-- [ ] `name` (if provided) uses `kebab-case`
-- [ ] `disable-model-invocation` is omitted unless you have a specific reason
 - [ ] No other skill shares the same name
 - [ ] Internal paths in the skill body are relative to the skill directory
 
@@ -137,6 +149,7 @@ description: |
 
 ```yaml
 ---
+name: migration-review
 description: Use this when reviewing database migrations.
 ---
 

@@ -1,5 +1,5 @@
 """
-kana-skills: deepseek_balance
+kana-skills: deepseek-balance
 Query DeepSeek API account balance.
 """
 import sys

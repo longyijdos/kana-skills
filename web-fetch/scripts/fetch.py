@@ -1,10 +1,10 @@
 """
-kana-skills: web_fetch
+kana-skills: web-fetch
 Fetch a URL and extract readable text content.
 """
-import sys
 import json
 import re
+import argparse
 
 def fetch(url: str, max_chars: int = 8000):
     """Fetch URL and return structured content."""
@@ -91,11 +91,12 @@ def fetch(url: str, max_chars: int = 8000):
     }
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(json.dumps({"error": "Usage: python fetch.py <url> [max_chars]"}, ensure_ascii=False))
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Fetch a URL and extract readable text.")
+    parser.add_argument("url", help="URL to fetch")
+    parser.add_argument("legacy_max_chars", nargs="?", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--max-chars", type=int, default=None, help="Maximum characters to return")
+    args = parser.parse_args()
 
-    url = sys.argv[1]
-    max_chars = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
-    result = fetch(url, max_chars)
+    max_chars = args.max_chars or args.legacy_max_chars or 8000
+    result = fetch(args.url, max_chars)
     print(json.dumps(result, ensure_ascii=False, indent=2))
