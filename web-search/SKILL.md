@@ -19,6 +19,7 @@ Pass these as arguments when invoking `scripts/search.py`:
 | query | string | yes | - | Search query string |
 | max_results | number | no | 5 | Max results to return |
 | include_domains | string[] | no | - | Restrict to specific domains |
+| exclude_domains | string[] | no | - | Exclude specific domains |
 
 ## Dependencies
 
@@ -28,11 +29,11 @@ Pass these as arguments when invoking `scripts/search.py`:
 ## Run
 
 ```bash
-python scripts/search.py "your query" [--max-results 5] [--include-domain example.com]
+python scripts/search.py "your query" [--max-results 5] [--include-domain example.com] [--exclude-domain example.org]
 ```
 
-Repeat `--include-domain` to allow multiple domains. Results are returned as structured
-JSON with `title`, `url`, `content`, and `score`.
+Repeat `--include-domain` or `--exclude-domain` to pass multiple domains. Results are returned
+as structured JSON with `title`, `url`, `content`, and `score`.
 
 ## Handling Results
 

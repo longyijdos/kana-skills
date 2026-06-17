@@ -6,7 +6,10 @@ import json
 import re
 import argparse
 
-def fetch(url: str, max_chars: int = 8000):
+DEFAULT_MAX_BYTES = 5 * 1024 * 1024
+
+
+def fetch(url: str, max_chars: int = 8000, max_bytes: int = DEFAULT_MAX_BYTES):
     """Fetch URL and return structured content."""
     # Validate URL
     if not url.startswith(("http://", "https://")):
@@ -32,7 +35,7 @@ def fetch(url: str, max_chars: int = 8000):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
         }
-        resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
+        resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True, stream=True)
         resp.raise_for_status()
     except requests.exceptions.Timeout:
         return {"error": f"Request timed out for {url}"}
@@ -44,16 +47,46 @@ def fetch(url: str, max_chars: int = 8000):
         return {"error": f"Request failed: {str(e)}"}
 
     content_type = resp.headers.get("Content-Type", "")
+    content_length = resp.headers.get("Content-Length")
+    try:
+        content_length = int(content_length) if content_length is not None else None
+    except ValueError:
+        content_length = None
+
+    chunks = []
+    bytes_read = 0
+    limited = False
+    try:
+        for chunk in resp.iter_content(chunk_size=65536):
+            if not chunk:
+                continue
+            if bytes_read + len(chunk) > max_bytes:
+                chunks.append(chunk[: max_bytes - bytes_read])
+                bytes_read = max_bytes
+                limited = True
+                break
+            chunks.append(chunk)
+            bytes_read += len(chunk)
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed reading response body: {str(e)}"}
+
+    resp._content = b"".join(chunks)
+    resp.encoding = resp.encoding or resp.apparent_encoding
 
     # Only parse HTML
     if "text/html" not in content_type and "application/xhtml" not in content_type:
+        text = resp.text
         return {
             "url": url,
+            "final_url": resp.url,
             "title": None,
-            "text": resp.text[:max_chars] if len(resp.text) <= max_chars else resp.text[:max_chars] + "...",
+            "text": text[:max_chars] if len(text) <= max_chars else text[:max_chars] + "...",
             "status_code": resp.status_code,
             "content_type": content_type,
-            "truncated": len(resp.text) > max_chars,
+            "content_length": content_length,
+            "bytes_read": bytes_read,
+            "limited": limited,
+            "truncated": len(text) > max_chars or limited,
         }
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -80,13 +113,18 @@ def fetch(url: str, max_chars: int = 8000):
     truncated = len(text) > max_chars
     if truncated:
         text = text[:max_chars] + "..."
+    truncated = truncated or limited
 
     return {
         "url": url,
+        "final_url": resp.url,
         "title": title,
         "text": text,
         "status_code": resp.status_code,
         "content_type": content_type,
+        "content_length": content_length,
+        "bytes_read": bytes_read,
+        "limited": limited,
         "truncated": truncated,
     }
 
@@ -95,8 +133,21 @@ if __name__ == "__main__":
     parser.add_argument("url", help="URL to fetch")
     parser.add_argument("legacy_max_chars", nargs="?", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--max-chars", type=int, default=None, help="Maximum characters to return")
+    parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES, help="Maximum response bytes to read")
     args = parser.parse_args()
 
-    max_chars = args.max_chars or args.legacy_max_chars or 8000
-    result = fetch(args.url, max_chars)
+    if args.max_chars is not None:
+        max_chars = args.max_chars
+    elif args.legacy_max_chars is not None:
+        max_chars = args.legacy_max_chars
+    else:
+        max_chars = 8000
+    if max_chars < 1:
+        print(json.dumps({"error": "max_chars must be at least 1"}, ensure_ascii=False, indent=2))
+        raise SystemExit(1)
+    if args.max_bytes < 1:
+        print(json.dumps({"error": "max_bytes must be at least 1"}, ensure_ascii=False, indent=2))
+        raise SystemExit(1)
+
+    result = fetch(args.url, max_chars, args.max_bytes)
     print(json.dumps(result, ensure_ascii=False, indent=2))

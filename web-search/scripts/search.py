@@ -6,7 +6,12 @@ import os
 import json
 import argparse
 
-def search(query: str, max_results: int = 5, include_domains: list[str] | None = None):
+def search(
+    query: str,
+    max_results: int = 5,
+    include_domains: list[str] | None = None,
+    exclude_domains: list[str] | None = None,
+):
     """Execute web search, return structured results."""
     api_key = os.environ.get("TAVILY_API_KEY")
     if not api_key:
@@ -26,8 +31,13 @@ def search(query: str, max_results: int = 5, include_domains: list[str] | None =
     }
     if include_domains:
         kwargs["include_domains"] = include_domains
+    if exclude_domains:
+        kwargs["exclude_domains"] = exclude_domains
 
-    response = client.search(**kwargs)
+    try:
+        response = client.search(**kwargs)
+    except Exception as exc:
+        return {"error": f"Tavily search failed: {exc}"}
 
     results = []
     for r in response.get("results", []):
@@ -55,8 +65,23 @@ if __name__ == "__main__":
         dest="include_domains",
         help="Restrict search to a domain. Repeat for multiple domains.",
     )
+    parser.add_argument(
+        "--exclude-domain",
+        action="append",
+        dest="exclude_domains",
+        help="Exclude a domain from search. Repeat for multiple domains.",
+    )
     args = parser.parse_args()
 
-    max_results = args.max_results or args.legacy_max_results or 5
-    result = search(args.query, max_results, args.include_domains)
+    if args.max_results is not None:
+        max_results = args.max_results
+    elif args.legacy_max_results is not None:
+        max_results = args.legacy_max_results
+    else:
+        max_results = 5
+    if max_results < 1:
+        print(json.dumps({"error": "max_results must be at least 1"}, ensure_ascii=False, indent=2))
+        raise SystemExit(1)
+
+    result = search(args.query, max_results, args.include_domains, args.exclude_domains)
     print(json.dumps(result, ensure_ascii=False, indent=2))
