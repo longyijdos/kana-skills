@@ -1,184 +1,84 @@
 ---
 name: xiaohongshu-cli
 description: |
-  Use this for Xiaohongshu (小红书, XHS, Redbook) operations including searching
-  notes, reading note content or comments, browsing users and trends, and managing
-  the authenticated account. Requires the local xhs CLI. Obtain explicit user
-  confirmation immediately before any write operation: like, favorite, follow,
-  comment, reply, post, or delete.
+  Use this for all Xiaohongshu (小红书, XHS, Redbook) account operations: searching
+  and reading notes, comments, users, trends, favorites, notifications, and own
+  posts; and, only with explicit confirmation, liking, collecting, following,
+  commenting, replying, deleting, or publishing. Requires the local xhs CLI.
 ---
 
 # Xiaohongshu CLI
 
-Use the `xhs` command supplied by the `xiaohongshu-cli` package. Prefer its
-machine-readable output for all agent work:
+Use `xhs`, provided by the `xiaohongshu-cli` package. This skill manages Xiaohongshu
+account operations only. Use the separate `xhs-note-creator` skill to create and
+validate card images before publishing an image note.
 
-```bash
-xhs <command> --json
-```
+Before executing any `xhs` command, read
+[`references/command-reference.md`](references/command-reference.md). It is the
+canonical command map, parameter reference, cache guide, and error-handling guide
+for this skill.
 
-## Setup
+## Operating rules
 
-Install once when the `xhs` command is unavailable:
+1. Prefer machine-readable output: append `--json` to every command.
+2. Run requests serially. Do not parallelize `xhs` calls, scrape in bulk, or retry
+   around verification and rate-limit errors.
+3. Treat cookies, `xsec_token` values, and account-state files as secrets. Never
+   request them in chat or print them in summaries or logs.
+4. For a read request, use the smallest number of calls that answers the question;
+   use a full note URL when one is supplied.
+5. For a write request, first show the exact target, final text, image paths, topics,
+   visibility, and command effect. Obtain explicit confirmation in the current
+   conversation immediately before execution.
+6. A general request such as “publish this” does not authorize a later changed title,
+   body, topic list, image set, or visibility setting.
+
+## Setup and authentication
+
+Install the CLI only when `xhs` is unavailable:
 
 ```bash
 uv tool install xiaohongshu-cli
 ```
 
-The CLI stores its own account state outside the skill and repository:
+The CLI stores account state outside this repository in `~/.xiaohongshu-cli/`.
+It can contain saved cookies and short-lived caches. Do not put drafts or rendered
+images there.
 
-```text
-~/.xiaohongshu-cli/
-```
+Never begin a first login with bare `xhs status` or bare `xhs login`: with no saved
+session they can auto-scan installed browsers and trigger repeated macOS Keychain
+prompts. Follow the authentication decision tree in the command reference instead.
 
-This directory can contain:
+## Request routing
 
-- `cookies.json` — copied Xiaohongshu session cookies and a saved timestamp.
-- `token_cache.json` — short-lived note access tokens.
-- `index_cache.json` — the latest note list for numeric references such as `xhs read 1`.
-- `search_sessions.json` — short-lived search session IDs.
-
-Cookie and cache files are private account state. Never request, print, or include
-their contents in logs or chat. `xhs logout` removes only `cookies.json`; removing
-the whole directory clears all CLI state.
-
-## Authentication
-
-Do not run `xhs status` as the first authentication check. When no saved session
-exists, `status` falls back to automatic browser discovery, which can probe several
-installed browsers and trigger repeated macOS Keychain prompts.
-
-First check whether the CLI already has a saved session:
-
-```bash
-test -f ~/.xiaohongshu-cli/cookies.json && echo "SAVED_SESSION" || echo "LOGIN_NEEDED"
-```
-
-If `SAVED_SESSION` is returned, verify it normally:
-
-```bash
-xhs status --json
-```
-
-If `LOGIN_NEEDED` is returned, do not invoke bare `xhs login` or `xhs status`.
-Ask the user which authentication method to use, then use the selected method.
-
-### Browser-cookie login
-
-The user must already be logged in to Xiaohongshu in the selected browser. Specify
-that browser explicitly, for example:
-
-```bash
-xhs login --cookie-source edge
-```
-
-Other examples are `chrome`, `safari`, `arc`, `brave`, and `firefox`. Do not use
-the default `auto` source unless the user explicitly accepts scanning all supported
-browsers. On macOS, the chosen browser may prompt to unlock its `Safe Storage`
-Keychain item. Explain that this lets the CLI read the browser's Xiaohongshu cookie;
-the user should approve it once only if they chose this method. Never ask for the
-password or cookie value in chat.
-
-### QR-code login
-
-```bash
-xhs login --qrcode
-```
-
-This method may download the Camoufox browser runtime on first use (roughly 300 MB).
-Tell the user before starting it and use it only after they explicitly approve the
-download. It does not require reading cookies from an installed browser.
-
-After either login method succeeds, run `xhs status --json` to verify the session.
-The CLI saves a copy of the resulting Xiaohongshu cookies in
-`~/.xiaohongshu-cli/cookies.json`; it does not require pasting a cookie into chat.
-
-If a command returns `verification_required`, `ip_blocked`, or a session-expiry
-error, stop retries and ask the user to complete the browser verification or login.
-
-## Read-only operations
-
-Run these serially. Do not parallelize `xhs` calls or run bulk polling.
-
-| Need | Command |
+| User intent | Use |
 |---|---|
-| Search notes | `xhs search "keyword" --json` |
-| Read a note | `xhs read "<note-id-or-url>" --json` |
-| Read comments | `xhs comments "<note-id-or-url>" --json` |
-| Read all comments | `xhs comments "<note-id-or-url>" --all --json` |
-| Browse a user's profile | `xhs user "<user-id>" --json` |
-| List a user's notes | `xhs user-posts "<user-id>" --json` |
-| Browse recommendations | `xhs feed --json` |
-| Browse category trends | `xhs hot -c food --json` |
-| Search topics | `xhs topics "keyword" --json` |
-| Search users | `xhs search-user "keyword" --json` |
-| View own notes | `xhs my-notes --json` |
+| Find, inspect, or analyze public notes | Reading and discovery commands |
+| Inspect a profile, own posts, favorites, notifications, or unread counts | Account and creator read commands |
+| Read a comment thread or replies | Comment commands |
+| Like, collect, follow, comment, reply, or delete | Write command plus explicit confirmation |
+| Produce cover/card images or post copy | `xhs-note-creator`, then validate the draft |
+| Publish a prepared image post | Creator command plus explicit confirmation; default private |
 
-Available hot categories: `fashion`, `food`, `cosmetics`, `movie`, `career`,
-`love`, `home`, `gaming`, `travel`, `fitness`.
+## Handoff to publishing
 
-For a note URL, pass the full URL unchanged so its access token can be used. Numeric
-references such as `xhs read 1` depend on the latest cached list; prefer a note URL
-or ID when accuracy matters.
+For a post produced by `xhs-note-creator`, validate the draft first. Then show the
+user the final `manifest.json` title, `note.md` body, complete `output/*.png` list,
+topics, and visibility. Publish only after confirmation, using the exact image list.
 
-### Reading one of the user's own notes
+The CLI supports image notes only: it uploads existing image files and does not
+generate cards, convert source material into images, publish text-only notes, or
+publish video notes.
 
-`xhs my-notes --json` returns an `id` and `xsec_token` for each own note. The CLI
-does not currently propagate that token into its short-index cache, so `xhs read 1`
-may return an empty result for an own note. Read it explicitly instead:
+## Version and drift
+
+This reference was written against `xiaohongshu-cli` 0.6.4. Before relying on a
+newly introduced option or after upgrading the tool, run:
 
 ```bash
-xhs read "<id from my-notes>" --xsec-token "<matching token from my-notes>" --json
+xhs --version
+xhs <command> --help
 ```
 
-Treat that token as private access context: use it only for the command and do not
-echo it in summaries, logs, or chat.
-
-## Write operations
-
-These change the user's Xiaohongshu account or publish content. Immediately before
-running a command, show the exact target and final text/options, then obtain the
-user's explicit confirmation in the current conversation. Do not treat a general
-request as confirmation for a later final payload.
-
-| Action | Command |
-|---|---|
-| Like / unlike | `xhs like "<note-id-or-url>"` / `xhs like "<...>" --undo` |
-| Favorite / remove favorite | `xhs favorite "<note-id-or-url>"` / `xhs unfavorite "<...>"` |
-| Comment | `xhs comment "<note-id-or-url>" -c "<final text>"` |
-| Reply | `xhs reply "<note-id-or-url>" --comment-id "<id>" -c "<final text>"` |
-| Follow / unfollow | `xhs follow "<user-id>"` / `xhs unfollow "<user-id>"` |
-| Delete own comment | `xhs delete-comment "<note-id>" "<comment-id>" -y` |
-
-### Posting an image note
-
-Verify the title, body, image paths, topics, and privacy setting with the user.
-Publish privately by default:
-
-```bash
-xhs post \
-  --title "<final title>" \
-  --body "<final body>" \
-  --images "<image-1>" \
-  --images "<image-2>" \
-  --private \
-  --json
-```
-
-Use one `--topic "<topic>"` per topic when the user approved them. Do not publish
-publicly unless the user explicitly requests a public note. After success, return
-the structured result without exposing cookies or access tokens.
-
-### Deletion
-
-For `xhs delete "<note-id-or-url>" -y`, show the exact note to be deleted and get
-explicit confirmation immediately before execution. This action is irreversible.
-
-## Result handling
-
-- Inspect the JSON envelope's `.data` field for successful responses and `.error`
-  for failures.
-- Summarize only the fields relevant to the user's request; avoid echoing session
-  tokens, identifiers not needed for the task, or raw server payloads.
-- The platform rate-limits requests. Keep calls serial and stop when verification is
-  required instead of trying to bypass it.
+If CLI behavior differs from this reference, use the local command help as the
+execution source of truth and update this skill's command reference coherently.
