@@ -1,0 +1,12 @@
+{
+  "name": "kana-xhs-note-creator",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local card renderer for the xhs-note-creator skill",
+  "scripts": {
+    "render": "node scripts/render_cards.js"
+  },
+  "dependencies": {
+    "playwright": "^1.57.0"
+  }
+}

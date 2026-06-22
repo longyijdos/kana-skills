@@ -121,6 +121,19 @@ For a note URL, pass the full URL unchanged so its access token can be used. Num
 references such as `xhs read 1` depend on the latest cached list; prefer a note URL
 or ID when accuracy matters.
 
+### Reading one of the user's own notes
+
+`xhs my-notes --json` returns an `id` and `xsec_token` for each own note. The CLI
+does not currently propagate that token into its short-index cache, so `xhs read 1`
+may return an empty result for an own note. Read it explicitly instead:
+
+```bash
+xhs read "<id from my-notes>" --xsec-token "<matching token from my-notes>" --json
+```
+
+Treat that token as private access context: use it only for the command and do not
+echo it in summaries, logs, or chat.
+
 ## Write operations
 
 These change the user's Xiaohongshu account or publish content. Immediately before
