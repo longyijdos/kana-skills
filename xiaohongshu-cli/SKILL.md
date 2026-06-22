@@ -44,24 +44,54 @@ the whole directory clears all CLI state.
 
 ## Authentication
 
-Before any command that talks to Xiaohongshu, check authentication:
+Do not run `xhs status` as the first authentication check. When no saved session
+exists, `status` falls back to automatic browser discovery, which can probe several
+installed browsers and trigger repeated macOS Keychain prompts.
+
+First check whether the CLI already has a saved session:
+
+```bash
+test -f ~/.xiaohongshu-cli/cookies.json && echo "SAVED_SESSION" || echo "LOGIN_NEEDED"
+```
+
+If `SAVED_SESSION` is returned, verify it normally:
 
 ```bash
 xhs status --json
 ```
 
-If authentication is unavailable, ask the user to complete one of these local
-commands themselves, then re-check status:
+If `LOGIN_NEEDED` is returned, do not invoke bare `xhs login` or `xhs status`.
+Ask the user which authentication method to use, then use the selected method.
+
+### Browser-cookie login
+
+The user must already be logged in to Xiaohongshu in the selected browser. Specify
+that browser explicitly, for example:
 
 ```bash
-xhs login
+xhs login --cookie-source edge
+```
+
+Other examples are `chrome`, `safari`, `arc`, `brave`, and `firefox`. Do not use
+the default `auto` source unless the user explicitly accepts scanning all supported
+browsers. On macOS, the chosen browser may prompt to unlock its `Safe Storage`
+Keychain item. Explain that this lets the CLI read the browser's Xiaohongshu cookie;
+the user should approve it once only if they chose this method. Never ask for the
+password or cookie value in chat.
+
+### QR-code login
+
+```bash
 xhs login --qrcode
 ```
 
-`xhs login` reads the locally logged-in browser's Xiaohongshu cookies and saves a
-copy in `~/.xiaohongshu-cli/cookies.json`; it does not require pasting a cookie
-into chat. `xhs login --qrcode` may require a separately installed Camoufox browser
-runtime.
+This method may download the Camoufox browser runtime on first use (roughly 300 MB).
+Tell the user before starting it and use it only after they explicitly approve the
+download. It does not require reading cookies from an installed browser.
+
+After either login method succeeds, run `xhs status --json` to verify the session.
+The CLI saves a copy of the resulting Xiaohongshu cookies in
+`~/.xiaohongshu-cli/cookies.json`; it does not require pasting a cookie into chat.
 
 If a command returns `verification_required`, `ip_blocked`, or a session-expiry
 error, stop retries and ask the user to complete the browser verification or login.
