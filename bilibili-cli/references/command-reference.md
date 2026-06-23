@@ -52,15 +52,23 @@ account API call; do not loop or retry it on an API or rate-limit failure. A sta
 or invalid saved credential can cause the CLI to fall through to automatic browser
 cookie scanning; obtain the user's approval before running `status` in that case.
 
-### QR-code login
+### QR-code login: user-run only
 
-`bili login` changes local authentication state and displays a QR code. Before
-executing it, explain that the user must approve the login by scanning the QR code
-with their Bilibili app and get their approval in the current conversation:
+`bili login` changes local authentication state, displays a Unicode-block QR code
+in the terminal, and polls until the user scans and confirms it with the Bilibili
+app. It has no non-interactive mode, URL-output flag, or alternate QR-output mode.
+Therefore an agent must never execute it: a non-TTY shell cannot reliably complete
+or display the blocking flow.
+
+Tell the user to run this exact command in their own interactive terminal and wait
+until it reports success:
 
 ```bash
 bili login
 ```
+
+Afterward, the CLI saves the credential under `~/.bilibili-cli/credential.json`.
+Do not ask the user to paste that file, cookies, or any token into chat.
 
 ### Automatic browser-cookie fallback
 
@@ -73,9 +81,10 @@ Brave. It saves the first valid Bilibili session it finds to
 It can cause browser database/Keychain access prompts and cannot be constrained to
 one browser from the CLI. Therefore, before an authenticated command could trigger
 this fallback, explain the exact automatic scan and obtain explicit user approval.
-If the user does not approve it, use `bili login` (QR code) instead. Do not request
-cookie values, use another person's browser profile, or print cookie-derived data
-beyond the requested result. Verify a completed QR login:
+If the user does not approve it, stop and direct them to run `bili login` themselves
+in an interactive terminal. Do not request cookie values, use another person's
+browser profile, or print cookie-derived data beyond the requested result. A user
+can verify a completed QR login in that terminal with:
 
 ```bash
 bili status --yaml
@@ -87,13 +96,14 @@ bili status --yaml
 |---|---|---|
 | `bili status --yaml` | Verify saved session | None |
 | `bili whoami --yaml` | Show current account profile | None |
-| `bili login` | Open QR-code login | Writes saved credential |
+| `bili login` | User-run terminal QR login | Writes saved credential |
 | `bili logout` | Delete saved credential | Local account-state deletion |
 
-`login` and `logout` require explicit confirmation. For `logout`, state that it
-removes the saved local credential and does not delete the remote Bilibili account.
-An authenticated read can itself trigger the automatic browser-cookie fallback
-described above, so it also needs approval when no usable saved credential exists.
+`bili login` is user-run only. `logout` requires explicit confirmation; state that
+it removes the saved local credential and does not delete the remote Bilibili
+account. An authenticated read can itself trigger the automatic browser-cookie
+fallback described above, so do not run one without a usable saved credential unless
+the user explicitly approves that scan.
 
 ## 2. Public video, user, search, and discovery reads
 
@@ -199,7 +209,7 @@ directory for artifacts that need to persist. Do not place downloads in
 
 | Error condition | Required response |
 |---|---|
-| `not_authenticated` | Stop; offer QR-code login or the automatic multi-browser scan, each only with approval |
+| `not_authenticated` | Stop; instruct the user to run `bili login` in an interactive terminal |
 | `permission_denied` or missing write credential | Stop; report missing permission |
 | `rate_limited` or HTTP 412 | Stop; do not retry, parallelize, or increase `--max` |
 | `invalid_input` or invalid BV ID | Ask for a corrected BV ID or full URL |

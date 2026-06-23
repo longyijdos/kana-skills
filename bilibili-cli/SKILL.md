@@ -63,14 +63,18 @@ The CLI stores Bilibili account state in `~/.bilibili-cli/`, principally
 Do not put drafts or downloaded media in the credential directory.
 
 Most public reads do not require login. Before a login-required request, check for
-the saved credential as described in the command reference. `bili login` opens a
-QR-code login flow and changes local account state; explain that and get the user's
-approval before running it. Do not ask users to paste cookies or browser secrets.
+the saved credential as described in the command reference. Do not execute
+`bili login` from an agent: it is a blocking terminal QR-code flow and cannot be
+completed reliably without a TTY. Instead, instruct the user to run `bili login` in
+their own interactive terminal, scan and confirm the QR code, then return after it
+reports success. Do not ask users to paste cookies or browser secrets.
 
 Version 0.6.2 has no option to select a browser cookie source. On an authenticated
 command with no usable saved credential, it automatically tries Chrome, Firefox,
 Edge, and Brave in that order. Do not run such a command unless the user explicitly
-approves this automatic browser-cookie scan; otherwise use the QR-code login path.
+approves this automatic browser-cookie scan. Because an agent shell may be
+non-interactive, do not use this scan as an agent login fallback; direct the user to
+the manual QR-code login path instead.
 
 ## Request routing
 
