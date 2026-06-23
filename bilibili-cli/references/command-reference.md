@@ -19,7 +19,6 @@ splitting; downloading a complete M4A with `--no-split` works with the base CLI:
 ```bash
 uv tool install bilibili-cli
 uv tool install "bilibili-cli[audio]"       # audio support
-uv tool upgrade "bilibili-cli[audio]"       # add audio to an existing install
 ```
 
 ### Authentication

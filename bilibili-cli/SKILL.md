@@ -46,16 +46,11 @@ uv tool install bilibili-cli
 ```
 
 Downloading a complete M4A with `bili audio --no-split` works with the base CLI.
-WAV splitting requires the same CLI with its `audio` dependency group installed:
+For WAV splitting, install the same CLI with its `audio` dependency group. This
+command also adds audio support to an existing ordinary installation:
 
 ```bash
 uv tool install "bilibili-cli[audio]"
-```
-
-If the ordinary CLI is already installed, add the optional group with:
-
-```bash
-uv tool upgrade "bilibili-cli[audio]"
 ```
 
 The CLI stores Bilibili account state in `~/.bilibili-cli/`, principally
