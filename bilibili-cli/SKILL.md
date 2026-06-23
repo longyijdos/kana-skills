@@ -45,8 +45,8 @@ Install only when `bili` is unavailable:
 uv tool install bilibili-cli
 ```
 
-Audio extraction is optional and requires the same CLI with its `audio` dependency
-group installed:
+Downloading a complete M4A with `bili audio --no-split` works with the base CLI.
+WAV splitting requires the same CLI with its `audio` dependency group installed:
 
 ```bash
 uv tool install "bilibili-cli[audio]"
@@ -62,19 +62,16 @@ The CLI stores Bilibili account state in `~/.bilibili-cli/`, principally
 `credential.json`. `uv` separately manages the isolated executable environment.
 Do not put drafts or downloaded media in the credential directory.
 
-Most public reads do not require login. Before a login-required request, check for
-the saved credential as described in the command reference. Do not execute
-`bili login` from an agent: it is a blocking terminal QR-code flow and cannot be
-completed reliably without a TTY. Instead, instruct the user to run `bili login` in
-their own interactive terminal, scan and confirm the QR code, then return after it
-reports success. Do not ask users to paste cookies or browser secrets.
+Most public reads do not require login. `bili login` is a blocking terminal QR-code
+flow: never execute it from an agent. Tell the user to run it in their own
+interactive terminal, scan and confirm the QR code, then return after it reports
+success.
 
-Version 0.6.2 has no option to select a browser cookie source. On an authenticated
-command with no usable saved credential, it automatically tries Chrome, Firefox,
-Edge, and Brave in that order. Do not run such a command unless the user explicitly
-approves this automatic browser-cookie scan. Because an agent shell may be
-non-interactive, do not use this scan as an agent login fallback; direct the user to
-the manual QR-code login path instead.
+Any authenticated command can attempt to scan Chrome, Firefox, Edge, and Brave for
+cookies when the saved session is absent, stale, or invalid. This can trigger a
+browser database or Keychain prompt. Before such a command, tell the user this and
+obtain explicit approval; otherwise ask them to validate or log in themselves in an
+interactive terminal. Do not ask users to paste cookies or browser secrets.
 
 ## Request routing
 

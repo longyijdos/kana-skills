@@ -13,97 +13,36 @@ fields necessary for the task. Never expose credentials or unrelated private dat
 
 ## 1. Installation and authentication
 
-Install the normal CLI only when `bili` is unavailable:
+Install only when `bili` is unavailable. The `audio` extra is needed only for WAV
+splitting; downloading a complete M4A with `--no-split` works with the base CLI:
 
 ```bash
 uv tool install bilibili-cli
+uv tool install "bilibili-cli[audio]"       # audio support
+uv tool upgrade "bilibili-cli[audio]"       # add audio to an existing install
 ```
 
-The optional `audio` feature needs PyAV and is installed as an extra of the same
-package, not as a second CLI:
+### Authentication
 
-```bash
-uv tool install "bilibili-cli[audio]"
-```
-
-If `bili` is already installed without audio support:
-
-```bash
-uv tool upgrade "bilibili-cli[audio]"
-```
-
-### Check saved login state
-
-Do not trigger a login flow merely to answer a public read request. Check whether a
-saved credential exists first:
-
-```bash
-test -f ~/.bilibili-cli/credential.json && echo "SAVED_SESSION" || echo "LOGIN_NEEDED"
-```
-
-If it exists, verify it:
-
-```bash
-bili status --yaml
-```
-
-`status` exits 0 when authenticated and 1 when not authenticated. It can make an
-account API call; do not loop or retry it on an API or rate-limit failure. A stale
-or invalid saved credential can cause the CLI to fall through to automatic browser
-cookie scanning; obtain the user's approval before running `status` in that case.
-
-### QR-code login: user-run only
-
-`bili login` changes local authentication state, displays a Unicode-block QR code
-in the terminal, and polls until the user scans and confirms it with the Bilibili
-app. It has no non-interactive mode, URL-output flag, or alternate QR-output mode.
-Therefore an agent must never execute it: a non-TTY shell cannot reliably complete
-or display the blocking flow.
-
-Tell the user to run this exact command in their own interactive terminal and wait
-until it reports success:
+Credentials are stored in `~/.bilibili-cli/credential.json`; never print or request
+them. `bili login` is a blocking terminal QR flow with no non-interactive or URL
+mode, so an agent must never run it. Tell the user to run it in their own terminal:
 
 ```bash
 bili login
 ```
 
-Afterward, the CLI saves the credential under `~/.bilibili-cli/credential.json`.
-Do not ask the user to paste that file, cookies, or any token into chat.
+File presence is not validity: `test -f ~/.bilibili-cli/credential.json` is safe,
+but any authenticated command, including `bili status --yaml`, may scan Chrome,
+Firefox, Edge, and Brave if the session is absent, stale, or invalid. This can
+prompt for browser database or Keychain access; sessions older than seven days first
+trigger a browser refresh. The scan cannot be limited to one browser.
 
-### Automatic browser-cookie fallback
-
-In version 0.6.2, there is no `--cookie-source` option or browser selector. When an
-authenticated command needs a credential and has no usable saved credential, the CLI
-automatically tries local browsers in this fixed order: Chrome, Firefox, Edge, then
-Brave. It saves the first valid Bilibili session it finds to
-`~/.bilibili-cli/credential.json`.
-
-It can cause browser database/Keychain access prompts and cannot be constrained to
-one browser from the CLI. Therefore, before an authenticated command could trigger
-this fallback, explain the exact automatic scan and obtain explicit user approval.
-If the user does not approve it, stop and direct them to run `bili login` themselves
-in an interactive terminal. Do not request cookie values, use another person's
-browser profile, or print cookie-derived data beyond the requested result. A user
-can verify a completed QR login in that terminal with:
-
-```bash
-bili status --yaml
-```
-
-### Account commands
-
-| Command | Purpose | Write effect |
-|---|---|---|
-| `bili status --yaml` | Verify saved session | None |
-| `bili whoami --yaml` | Show current account profile | None |
-| `bili login` | User-run terminal QR login | Writes saved credential |
-| `bili logout` | Delete saved credential | Local account-state deletion |
-
-`bili login` is user-run only. `logout` requires explicit confirmation; state that
-it removes the saved local credential and does not delete the remote Bilibili
-account. An authenticated read can itself trigger the automatic browser-cookie
-fallback described above, so do not run one without a usable saved credential unless
-the user explicitly approves that scan.
+Before an agent runs an authenticated command, explain this and obtain explicit
+approval. Otherwise, ask the user to run `bili status --yaml` or `bili login`
+themselves in an interactive terminal. `status` exits 0 when authenticated and 1
+otherwise. `bili logout` requires confirmation because it deletes the local
+credential, not the remote account.
 
 ## 2. Public video, user, search, and discovery reads
 
@@ -187,11 +126,11 @@ missing, stop and report it; do not ask the user to expose a token or cookie.
 request; treat its three effects as a single higher-impact action. Do not substitute
 separate calls or retry individual parts after an ambiguous failure.
 
-## 5. Optional audio extraction
+## 5. Audio download and optional WAV splitting
 
-Audio extraction requires the optional package extra described in section 1. It
-downloads media and writes files, so first state the BV ID, intended purpose, and
-output directory. It does not publish or modify a Bilibili account.
+Audio download writes files, so first state the BV ID, intended purpose, and output
+directory. It does not publish or modify a Bilibili account. `--no-split` downloads
+an M4A with the base CLI; WAV segmentation requires the optional `audio` extra.
 
 | Task | Command |
 |---|---|
