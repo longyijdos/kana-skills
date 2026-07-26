@@ -33,6 +33,8 @@ OAuth client values may also be supplied through `--client-id`,
 ```sh
 gml profile
 gml labels list
+gml count 'is:unread newer_than:7d'
+gml messages count --q 'from:alerts@example.com'
 gml messages list --q 'is:unread' --max-results 10 --summary
 gml messages get MESSAGE_ID --format metadata --metadata-header Subject
 gml list 'from:alice@example.com newer_than:7d' --max-results 10
@@ -47,8 +49,16 @@ gml drafts
 
 `list` and `search` are convenient aliases for message listing. `--summary`
 adds sender, date, subject, labels, and snippet with bounded metadata request
-concurrency. `read` returns at most 12,000 normalized body characters by
-default and reports truncation; `--raw` returns the complete RFC 2822 message.
+concurrency. Text summaries convert valid message dates to the machine's local
+time zone; JSON preserves the original message header. Gmail's
+`resultSizeEstimate` is not an exact count, so high-level list commands omit it
+from both text and JSON. A direct `request` still returns the raw API field.
+
+`count` and `messages count` follow every result page and return the exact
+number of unique matching message IDs. They accept a positional query or
+`--q`, repeated `--label` or `--label-id`, and `--include-spam-trash`. `read`
+returns at most 12,000 normalized body characters by default and reports
+truncation; `--raw` returns the complete RFC 2822 message.
 
 ## Attachments
 

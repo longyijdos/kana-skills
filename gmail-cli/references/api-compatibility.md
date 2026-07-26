@@ -128,7 +128,18 @@ Supported query parameters are:
 
 The API response is `ListMessagesResponse`. Each listed `Message` normally
 contains only `id` and `threadId`, plus `nextPageToken` and
-`resultSizeEstimate` at the response level.
+`resultSizeEstimate` at the response level. Gmail defines
+`resultSizeEstimate` as an estimate. High-level message, thread, and draft list
+commands omit this field from text and JSON because it can be substantially
+inaccurate. The direct `request` command continues to preserve the raw API
+response.
+
+`count` and `messages count` call the same endpoint repeatedly with pages of at
+most 500 messages, detect repeated page tokens, deduplicate message IDs, and
+return the number of unique IDs after pagination completes. The result is exact
+for the pages traversed; like any multi-page listing, concurrent mailbox
+changes can affect the result. Count supports the same query, label, and
+spam/trash filters as message listing but intentionally has no page limit.
 
 Without `--summary`, metadata-only authorization is sufficient when `q` is not
 present. With a Gmail query, the CLI requires `readonly` or `modify`, matching
@@ -139,7 +150,9 @@ the documented restriction that `q` cannot be used with `gmail.metadata`.
 the `From`, `To`, `Date`, and `Subject` headers. At most six summary requests
 are in flight. An individual summary failure is retained in that item's
 `error` field and does not discard the successful list response or other
-summaries.
+summaries. JSON preserves the original `Date` header. Text output converts
+valid dates to the machine's local time zone and includes its numeric UTC
+offset; unparseable date values are displayed unchanged.
 
 ### Message retrieval
 
@@ -331,7 +344,8 @@ purpose-specific:
 | --- | --- |
 | Direct resource reads and writes | Gmail response under `data` |
 | `read` | Normalized message under `data`, or decoded RFC 2822 text under `raw` |
-| Lists with `--summary` | Original list fields plus `summaries` under `data` |
+| High-level lists | API list fields except `resultSizeEstimate`; summaries add `summaries` under `data` |
+| `count` or `messages count` | Exact `count` at the top level |
 | `attachments` | Normalized attachment metadata under `data` |
 | `download` | `downloaded` array containing file, byte count, and attachment ID |
 | Label or draft deletion | Explicit `deleted` status and resolved resource ID |
@@ -356,6 +370,7 @@ when that page changes.
 | `labels list` | 1 |
 | `label-create` or `label-delete` | 5, plus 1 when label resolution lists labels |
 | `messages list` | 5 per page, plus 1 if label-name resolution is needed |
+| `messages count` | 5 per result page, plus 1 per label name that requires resolution |
 | `messages list --summary` with N results | 5 per list page plus 20 x N |
 | `messages get`, `read`, or `attachments` | 20 |
 | `download` with A external attachments | 20 plus 20 x A |
@@ -392,7 +407,7 @@ authoritative.
 High-level commands intentionally cover common agent workflows:
 
 - Profile and label discovery.
-- Message and thread listing, search, summaries, and reading.
+- Message and thread listing, exact message counting, search, summaries, and reading.
 - Attachment inspection and download.
 - Sending, replying, forwarding, drafts, and draft sending/deletion.
 - Reversible message organization and trash/untrash.

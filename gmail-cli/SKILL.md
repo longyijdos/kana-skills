@@ -59,11 +59,17 @@ complete resource data, or programmatic parsing is required.
 Start with a narrow Gmail query and a bounded summary page:
 
 ```sh
+gml count 'is:unread newer_than:7d'
+
 gml messages list \
   --q 'is:unread newer_than:7d' \
   --max-results 20 \
   --summary
 ```
+
+`count` follows every result page and returns an exact message count. High-level
+list commands omit the API's unreliable `resultSizeEstimate` field; a direct
+`request` still exposes the raw API response when explicitly needed.
 
 Use `threads` when the task is about conversations rather than individual
 messages:
