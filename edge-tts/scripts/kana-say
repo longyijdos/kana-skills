@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# kana-say — Read text aloud with edge-tts (default: Xiaoxiao, silent output, auto-retry)
+set -euo pipefail
+
+VOICE="${KANA_SAY_VOICE:-zh-CN-XiaoxiaoNeural}"
+RATE="${KANA_SAY_RATE:-+0%}"
+TEXT=""
+
+usage() {
+    cat <<'EOF'
+Usage: kana-say [-v voice] [-r rate] [-f file] [text...]
+       echo "text" | kana-say
+
+Options:
+  -v voice   Voice name (default: zh-CN-XiaoxiaoNeural)
+  -r rate    Rate like +20%, -10% (default: +0%)
+  -f file    Read text from file instead of args/stdin
+  -h         Show this help
+
+Environment variables: KANA_SAY_VOICE / KANA_SAY_RATE
+EOF
+    exit 0
+}
+
+while getopts "v:r:f:h" opt; do
+    case "$opt" in
+        v) VOICE="$OPTARG" ;;
+        r) RATE="$OPTARG" ;;
+        f) TEXT="$(cat "$OPTARG")" ;;
+        h) usage ;;
+        *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+# Precedence: -f file > positional args > stdin
+if [[ -z "$TEXT" ]]; then
+    if [[ $# -gt 0 ]]; then
+        TEXT="$*"
+    elif [[ ! -t 0 ]]; then
+        TEXT="$(cat)"
+    else
+        echo "kana-say: no text input" >&2
+        exit 1
+    fi
+fi
+
+# Network can be flaky (Microsoft servers); retry 3 times, discard
+# all output and just let the audio play.
+for i in 1 2 3; do
+    if edge-playback --voice "$VOICE" --rate "$RATE" --text "$TEXT" >/dev/null 2>&1; then
+        exit 0
+    fi
+    sleep 1
+done
+
+echo "kana-say: TTS call failed, check your network" >&2
+exit 1

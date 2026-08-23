@@ -8,6 +8,7 @@ A collection of local skills for Kana, organized as self-contained directories.
 | --- | --- |
 | `bilibili-cli` | Bilibili CLI workflows |
 | `deepseek-balance` | DeepSeek balance queries |
+| `edge-tts` | Speak messages aloud through `kana-say` (Edge TTS) |
 | `gmail-cli` | Gmail workflows through `gml` |
 | `mermaid-skill` | Mermaid diagram workflows |
 | `netease-musicbox` | NetEase Cloud Music controls |
