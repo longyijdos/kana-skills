@@ -12,6 +12,7 @@ A collection of local skills for Kana, organized as self-contained directories.
 | `gmail-cli` | Gmail workflows through `gml` |
 | `mermaid-skill` | Mermaid diagram workflows |
 | `netease-musicbox` | NetEase Cloud Music controls |
+| `notes-repo` | Maintain a personal notes repository located via `KANA_NOTES_REPO`, following the repository's own declared conventions |
 | `web-fetch` | Readable content extraction from URLs |
 | `web-search` | Web search workflows |
 | `xhs-note-creator` | Create reviewable Xiaohongshu post assets |
