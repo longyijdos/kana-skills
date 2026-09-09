@@ -1,0 +1,1 @@
+"""ChatGPT browser CLI."""

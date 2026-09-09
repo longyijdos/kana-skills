@@ -6,6 +6,11 @@ __pycache__/
 venv/
 env/
 
+.auth/
+*.egg-info/
+build/
+dist/
+
 .DS_Store
 .idea/
 .vscode/
