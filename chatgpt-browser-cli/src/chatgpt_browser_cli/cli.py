@@ -454,8 +454,8 @@ def ask(args: argparse.Namespace) -> int:
                 f"没有进入已登录的 ChatGPT 页面，当前地址：{page.url}"
             ) from error
 
-        answers = page.locator('[data-message-author-role="assistant"]')
-        previous_count = answers.count()
+        answer_turns = page.locator('section[data-turn="assistant"]')
+        previous_count = answer_turns.count()
         if args.fast or args.bot:
             prompt.fill(args.question)
         else:
@@ -471,10 +471,10 @@ def ask(args: argparse.Namespace) -> int:
         prompt.press("Enter")
 
         page.wait_for_function(
-            "count => document.querySelectorAll('[data-message-author-role=\"assistant\"]').length > count",
+            "count => document.querySelectorAll('section[data-turn=\"assistant\"]').length > count",
             arg=previous_count,
         )
-        answer_turn = page.locator('section[data-turn="assistant"]').last
+        answer_turn = answer_turns.last
         stop = page.locator('[data-testid="stop-button"]')
         try:
             stop.wait_for(state="visible", timeout=5000)
@@ -512,7 +512,7 @@ def parser() -> argparse.ArgumentParser:
     query = commands.add_parser("ask", help="在临时聊天中提问并输出回答")
     query.add_argument("question")
     query.add_argument("--state", default=str(DEFAULT_STATE))
-    query.add_argument("--timeout", type=float, default=300)
+    query.add_argument("--timeout", type=float, default=900)
     query.add_argument("--proxy", help="代理地址；默认读取 HTTPS_PROXY/HTTP_PROXY")
     query.add_argument("--user-agent", help="覆盖 User-Agent（默认根据当前 Edge 版本生成）")
     query.add_argument("--headed", action="store_true", help="调试时显示浏览器窗口")

@@ -63,13 +63,13 @@ Use a focused prompt that contains the question, essential context, desired outp
 and relevant constraints:
 
 ```bash
-uv run chatgpt-cli ask --timeout 300 "your question"
+uv run chatgpt-cli ask --timeout 900 "your question"
 ```
 
 For long inputs (such as rich context, extensive code snippets, or lengthy prompts over 150-200 characters), add `--fast` to use direct DOM input rather than simulated keystrokes:
 
 ```bash
-uv run chatgpt-cli ask --fast --timeout 300 "your long question..."
+uv run chatgpt-cli ask --fast --timeout 900 "your long question..."
 ```
 
 > **Risk note**: `--fast` bypasses human-like typing delays and mouse trajectories, filling the input box instantly. While safe for occasional use, using `--fast` excessively or on very frequent queries may increase detection risk by Cloudflare or ChatGPT anti-bot systems.
@@ -82,8 +82,8 @@ verify material claims against the original sources before using them.
 
 ChatGPT may take several minutes to answer, and the CLI does not write the answer to
 stdout until generation finishes and the complete reply has been copied. Prefer a
-timeout of at least 300 seconds; use a longer timeout for deep research or long,
-structured answers. When the agent environment supports a background process,
+timeout of at least 900 seconds; use an even longer timeout for deep research or
+long, structured answers. When the agent environment supports a background process,
 asynchronous command, or yielded execution session:
 
 1. Start the `ask` command with a short initial yield and retain its process or session
