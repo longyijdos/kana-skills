@@ -512,7 +512,7 @@ def parser() -> argparse.ArgumentParser:
     query = commands.add_parser("ask", help="在临时聊天中提问并输出回答")
     query.add_argument("question")
     query.add_argument("--state", default=str(DEFAULT_STATE))
-    query.add_argument("--timeout", type=float, default=120)
+    query.add_argument("--timeout", type=float, default=300)
     query.add_argument("--proxy", help="代理地址；默认读取 HTTPS_PROXY/HTTP_PROXY")
     query.add_argument("--user-agent", help="覆盖 User-Agent（默认根据当前 Edge 版本生成）")
     query.add_argument("--headed", action="store_true", help="调试时显示浏览器窗口")

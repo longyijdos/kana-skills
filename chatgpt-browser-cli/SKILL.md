@@ -80,8 +80,11 @@ verify material claims against the original sources before using them.
 
 ## Background execution
 
-ChatGPT may take several minutes to answer. When the agent environment supports a
-background process, asynchronous command, or yielded execution session:
+ChatGPT may take several minutes to answer, and the CLI does not write the answer to
+stdout until generation finishes and the complete reply has been copied. Prefer a
+timeout of at least 300 seconds; use a longer timeout for deep research or long,
+structured answers. When the agent environment supports a background process,
+asynchronous command, or yielded execution session:
 
 1. Start the `ask` command with a short initial yield and retain its process or session
    identifier.
