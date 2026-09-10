@@ -7,7 +7,6 @@ A collection of local skills for Kana, organized as self-contained directories.
 | Skill | Purpose |
 | --- | --- |
 | `bilibili-cli` | Bilibili CLI workflows |
-| `chatgpt-browser-cli` | Query ChatGPT via local headless Edge with imported login |
 | `deepseek-balance` | DeepSeek balance queries |
 | `edge-tts` | Speak messages aloud through `kana-say` (Edge TTS) |
 | `gmail-cli` | Gmail workflows through `gml` |
