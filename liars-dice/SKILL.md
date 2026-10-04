@@ -5,7 +5,7 @@ description: Play Liar's Dice (大话骰) with the user via a local web UI and c
 
 # Liar's Dice (大话骰)
 
-A fast, interactive 2-player Liar's Dice game played between an AI Agent and a human user. The user interacts through a retro pixel-art browser interface, while the Agent controls its actions via a companion CLI tool (`dice.js`).
+A fast, interactive 2-player Liar's Dice game played between an AI Agent and a human user. The user interacts through a retro pixel-art browser interface, while the Agent controls its actions via a companion CLI tool (`scripts/dice.js`).
 
 ## Rules Overview
 - Each player has 5 dice hidden under their cup (total 10 dice in play).
@@ -15,83 +15,95 @@ A fast, interactive 2-player Liar's Dice game played between an AI Agent and a h
 - Either player can challenge the previous bid by calling **Open (开盅)**.
 
 ## Project Structure
-All files reside in this skill directory:
-- `server.js`: HTTP + SSE game server. Serves the web UI and REST/SSE endpoints. Generates `.agent-token` for CLI authentication.
-- `index.html`: Retro pixel-art web client with realtime SSE event sync.
-- `dice.js`: Agent CLI client with state inspection, auto-wait semantics, and action commands.
-- `.agent-cursor`: Local state tracking file for incremental event polling.
+All implementation files reside in `scripts/`:
+- `scripts/server.js`: HTTP + SSE game server. Serves the web UI and REST/SSE endpoints. Generates `.agent-token` for CLI authentication.
+- `scripts/index.html`: Retro pixel-art web client with realtime SSE event sync.
+- `scripts/dice.js`: Agent CLI client with state inspection, auto-wait semantics, and action commands.
+- `scripts/.agent-cursor`: Local state tracking file for incremental event polling.
 
 ---
 
-## Game Workflow
+## Game Workflow & Agent Interaction Guidelines
+
+All commands below should be executed relative to this skill directory (or with `scripts/` prefix).
 
 ### 1. Launch Server
 Check if the server is already running, or start it as a background job:
 ```bash
-node server.js
+node scripts/server.js
 ```
-- Default port is `3456`. To use a custom port: `PORT=3457 node server.js`.
+- Default port is `3456`. To use a custom port: `PORT=3457 node scripts/server.js`.
 - Direct the user to open `http://localhost:3456` in their browser.
 
-### 2. Status & Observation
-Inspect the current game state, your dice, whose turn it is, and event history:
-```bash
-node dice.js status
-# or
-node dice.js observe
-```
-Add `--json` if structured JSON output is preferred.
+### 2. Communicating via CLI (Crucial)
+Once the game starts, the human player is actively interacting in their web browser and **may not return to the Agent chat terminal** until the game finishes.
+- **Always communicate in-game via CLI**: Deliver all turn commentary, trash talk, thoughts, and guidance using the action message flag (`-m "..."`) or the dedicated command `node scripts/dice.js talk "..."`.
+- Messages sent through the CLI display immediately as live speech bubbles and activity logs on the user's web dashboard. Do not rely solely on the agent's LLM response text in the terminal.
 
-### 3. Understanding the Wait Mechanism (`wait: auto` vs `--no-wait`)
-By default, `dice.js` commands (`call`, `open`, `new`, `talk`) use **auto-wait**:
-- If the action results in the turn passing to the human player, the command will **block** (HTTP long-polling for up to 30s) until the player responds or an unread event arrives.
-- If it is already/still the Agent's turn, or if the game has ended (settled), the command **returns immediately**.
-- Passing **`--no-wait`** forces immediate return without blocking.
+### 3. Asynchronous Wait & Wakeup Rule (Mandatory)
+When the Agent finishes its turn (or after starting a game where the player acts first), **the turn passes to the human player**:
+- **Always launch a background job to wait**: You **MUST** launch a background job running `node scripts/dice.js wait` (e.g. via `job_start`) before completing your turn.
+- **Why this is mandatory**: The user will perform their move (call, open, chat) inside the browser. If the Agent finishes its response without leaving an active background `wait` process, the Agent session will enter an idle state and **will NOT be woken up** when the user makes their move in the browser.
+- **When the background job completes**: You will automatically be notified. Inspect the job output to see the player's action and continue the match.
 
-**Agent Execution Strategy**:
-- When using tools with strict command execution timeouts (e.g. 30s), blocking foreground commands can risk timeouts if the human takes time to think.
-- **Recommended Agent Pattern**:
-  1. Execute actions with `--no-wait` for instantaneous feedback and state synchronization.
-  2. If the turn shifts to the user, launch a background job to wait for the user's move:
-     ```bash
-     node dice.js wait
-     ```
-  3. When the background job completes, read its output to see the player's move, then make your next turn.
+### 4. Command Execution Pattern (`--no-wait` + Background `wait`)
+By default, `dice.js` actions (`call`, `open`, `new`, `talk`) use auto-wait (HTTP long-polling up to 30s when turn transfers). Because users often take longer than 30s to think in the browser, foreground commands risk hitting tool execution timeouts.
 
-### 4. Game Actions & Table Banter
+**Standard Agent Turn Pattern**:
+1. Inspect state if needed:
+   ```bash
+   node scripts/dice.js status
+   ```
+2. Execute the move with `--no-wait` and include an in-game message:
+   ```bash
+   node scripts/dice.js call <count> <point> -m "Taunt message" --no-wait
+   # or
+   node scripts/dice.js open -m "Taunt message" --no-wait
+   ```
+3. If the game continues and it is the user's turn, **immediately start a background job**:
+   ```bash
+   # Launch as background job
+   node scripts/dice.js wait
+   ```
+4. Wait for the background job completion notification, consume output via job tools, and repeat.
 
-- **Start a New Game**:
+---
+
+## Command Reference
+
+- **Inspect Status**:
   ```bash
-  node dice.js new [player|agent] [-m "Table message"] [--no-wait]
+  node scripts/dice.js status
+  # or
+  node scripts/dice.js observe [--json]
   ```
-  `starter` defaults to `player`.
+
+- **Start New Game**:
+  ```bash
+  node scripts/dice.js new [player|agent] [-m "Welcome/Taunt message"] [--no-wait]
+  ```
 
 - **Make a Bid (Call)**:
   ```bash
-  node dice.js call <count> <point> [-m "Table message"] [--no-wait]
+  node scripts/dice.js call <count> <point> [-m "Message"] [--no-wait]
   ```
-  *Example*: `node dice.js call 3 5 -m "起步先来 3 个 5，你跟不跟？" --no-wait`
 
 - **Challenge / Open Cup**:
   ```bash
-  node dice.js open [-m "Table message"] [--no-wait]
+  node scripts/dice.js open [-m "Message"] [--no-wait]
   ```
-  *Example*: `node dice.js open -m "我手里一颗都没有，开盅抓你！" --no-wait`
 
-- **Standalone Table Talk (Chat / Trash Talk)**:
-  Send a message directly to the table talk history without making a move:
+- **Standalone Table Talk**:
+  Send a message directly to the web dashboard without taking a game turn:
   ```bash
-  node dice.js talk "怎么想了这么久，不敢叫了吗？" [--no-wait]
+  node scripts/dice.js talk "怎么想了这么久，不敢叫了吗？" [--no-wait]
   ```
-  This displays as an in-game speech bubble and chat entry on the human player's web screen.
 
-- **Wait for Events / Human Action**:
+- **Wait for Events / User Action**:
   ```bash
-  node dice.js wait
+  node scripts/dice.js wait
   ```
-  Blocks until a new event occurs (e.g., human makes a move or speaks) and outputs the updated game state.
+  Blocks until the user makes a move, sends a message, or starts a new round.
 
-### 5. Game End & Cleanup
-- When a game ends, the winner and full cup reveal are output by `dice.js`.
-- Either side can initiate a new round with `node dice.js new`.
-- When the user is done playing, terminate the background `node server.js` process.
+### 5. Cleanup
+When the user indicates they are finished playing, terminate the background `node scripts/server.js` process.
