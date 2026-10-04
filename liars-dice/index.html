@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liar's Dice Arcade · 大话骰</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d091a; --panel-bg: #17122b; --panel-border: #4a3b7c;
+      --accent: #a855f7; --accent-bright: #c084fc; --neon-cyan: #06b6d4;
+      --neon-pink: #ec4899; --neon-yellow: #facc15; --neon-green: #22c55e;
+      --neon-red: #ef4444; --text: #f3f4f6; --text-dim: #aaa0bd;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0; height: 100dvh; overflow: hidden; padding: 14px 18px; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      font-size: 14px; line-height: 1.5;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+      background: linear-gradient(transparent 50%, rgba(0,0,0,.17) 50%),
+        linear-gradient(90deg, rgba(255,0,0,.025), rgba(0,255,0,.01), rgba(0,0,255,.025));
+      background-size: 100% 4px, 6px 100%;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; touch-action: manipulation; }
+    button:disabled { cursor: not-allowed; opacity: .4; }
+    button:focus-visible, input:focus-visible, summary:focus-visible {
+      outline: 3px solid var(--neon-yellow); outline-offset: 4px;
+    }
+    .pixel { font-family: 'Press Start 2P', monospace; }
+    .container { max-width: 1080px; height: 100%; margin: 0 auto; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; }
+    .pixel-box {
+      background: var(--panel-bg); border: 4px solid var(--panel-border);
+      box-shadow: inset -4px -4px #0b0717, inset 4px 4px #2a224a, 6px 6px #000;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 12px 20px; background: #1c1536;
+      border: 4px solid var(--accent); box-shadow: 6px 6px #000;
+    }
+    h1 {
+      margin: 0; font-size: 16px; line-height: 1;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--neon-yellow); text-shadow: 2px 2px #b45309, 4px 4px #000;
+    }
+    .pixel-dice-icon {
+      width: 24px; height: 24px; flex-shrink: 0; display: block;
+    }
+    .header-controls { display: flex; align-items: center; gap: 12px; }
+    .connection {
+      font-size: 12px; line-height: 1; color: var(--text-dim); white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 7px;
+    }
+    .connection::before {
+      content: ""; display: block; width: 7px; height: 7px;
+      background: currentColor; flex-shrink: 0;
+    }
+    .connection.online { color: var(--neon-green); }
+    .connection.offline { color: #fca5a5; }
+    .small-btn {
+      background: #2a224a; color: var(--neon-yellow); border: 2px solid #584687;
+      padding: 6px 12px; box-shadow: 2px 2px #000; font-size: 11px; line-height: 1; white-space: nowrap;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .small-btn:hover { background: #3c3068; }
+    .game-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(290px, 1fr); gap: 20px; min-height: 0; }
+    .table { padding: 14px; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+    .seat { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; flex-shrink: 0; }
+    .seat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .profile { display: flex; align-items: center; gap: 10px; }
+    .avatar {
+      display: grid; place-items: center; width: 40px; height: 40px;
+      background: #2b124c; border: 3px solid var(--accent); box-shadow: 3px 3px #000; font-size: 22px;
+    }
+    .avatar.player { background: #12332b; border-color: var(--neon-green); }
+    .seat-name { font-size: 11px; color: var(--accent-bright); }
+    .seat-name.player { color: var(--neon-green); }
+    .seat-note { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+    .seat-status { color: var(--text-dim); font-size: 12px; }
+    .dice-rack { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 4px 0; }
+    .pixel-die {
+      flex-shrink: 0; width: 48px; height: 48px; padding: 6px; display: grid;
+      grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+      background: #fdf6e2; border: 3px solid #1a1a24;
+      box-shadow: inset -3px -3px #d5c4a1, inset 3px 3px #fff, 3px 3px #000;
+    }
+    .pixel-die > span { display: grid; place-items: center; }
+    .pip { width: 6px; height: 6px; background: #111827; }
+    .pip.red { background: #ef4444; }
+    .pixel-die.hidden-die {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; line-height: 1;
+      grid-template-columns: none; grid-template-rows: none;
+      background: #221a3a; border-color: #3c3068; color: #8873b6;
+      font-size: 18px; box-shadow: inset -3px -3px #140e24, 3px 3px #000;
+    }
+    .pixel-die.highlight { border-color: var(--neon-cyan); box-shadow: 0 0 9px #06b6d455, inset -3px -3px #a5f3fc, 3px 3px #000; }
+    .seat-speech { grid-column: 1 / -1; min-height: 26px; max-height: 26px; margin: 4px 0 0; padding: 4px 12px; font-size: 12px; line-height: 18px; color: var(--text-dim); text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
+    .seat-speech.spoken { background: #231637; border-left: 3px solid var(--accent); color: #e9d5ff; }
+    .seat-speech.spoken.player { background: #102c25; border-color: var(--neon-green); color: #bbf7d0; }
+    .table-center { flex: 1; min-height: 0; padding: 8px 14px; text-align: center; border: 2px dashed #594582; background: radial-gradient(ellipse at center, #281c49, #130d24); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .turn-badge { display: inline-block; padding: 4px 11px; font-size: 12px; color: var(--text-dim); border: 1px solid #584687; background: #0e0a1f; }
+    .turn-badge.your-turn { color: #86efac; border-color: var(--neon-green); }
+    .turn-badge.agent-turn { color: #d8b4fe; border-color: var(--accent); }
+    .turn-badge.win { color: #86efac; border-color: var(--neon-green); }
+    .turn-badge.lose { color: #f9a8d4; border-color: var(--neon-pink); }
+    .bid-label { margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+    .bid-value { display: flex; min-height: 52px; align-items: center; justify-content: center; gap: 14px; margin: 6px 0; }
+    .bid-number { font-size: 28px; color: var(--neon-yellow); text-shadow: 3px 3px #000; }
+    .stage-title { font-size: 20px; font-weight: 700; color: var(--neon-yellow); }
+    .stage-description { margin: 8px 0 0; font-size: 13px; color: var(--text-dim); }
+    .wild-pill { display: inline-block; font-size: 11px; padding: 3px 9px; border: 1px solid #654091; background: #2b124c; color: #d8b4fe; }
+    .result-details { margin: 9px 0 12px; color: var(--text); font-size: 13px; }
+    .result-details strong { color: var(--neon-yellow); font-size: 20px; }
+    .pixel-btn { min-height: 44px; border: 3px solid #d8b4fe; padding: 10px 18px; background: var(--accent); color: #fff; box-shadow: 4px 4px #000; font-weight: 650; }
+    .pixel-btn:hover:not(:disabled) { background: #b970f6; }
+    .pixel-btn:active:not(:disabled), .small-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px #000; }
+    .pixel-btn.primary { background: #325829; border-color: #86efac; color: #ecfccb; }
+    .pixel-btn.primary:hover:not(:disabled) { background: #427637; }
+    .pixel-btn.danger { background: #8f2d42; border-color: #fda4af; }
+    .pixel-btn.danger:hover:not(:disabled) { background: #b33750; }
+    .start-btn { margin-top: 17px; min-width: 172px; }
+    .move-panel { flex-shrink: 0; border-top: 2px solid #352749; padding-top: 8px; }
+    .move-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .move-heading strong { color: #bbf7d0; font-size: 13px; }
+    .move-heading span { color: var(--text-dim); font-size: 11px; }
+    .bid-controls { display: grid; grid-template-columns: 115px minmax(0, 1fr); gap: 22px; }
+    .control-label { display: block; color: var(--text-dim); margin-bottom: 5px; font-size: 12px; }
+    .stepper { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 51px; }
+    .stepper button { width: 30px; height: 34px; background: #2a224a; border: 2px solid #584687; color: #e9d5ff; font-size: 21px; }
+    .stepper output { font-size: 20px; color: var(--neon-yellow); }
+    .point-picker { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 5px; }
+    .point-option { display: flex; flex-direction: column; align-items: center; padding: 5px 2px; gap: 4px; background: #100b20; border: 2px solid #352749; color: var(--text-dim); font-size: 10px; }
+    .point-option:hover:not(:disabled) { border-color: #9478c4; }
+    .point-option[aria-pressed="true"] { border-color: var(--neon-cyan); background: #143040; color: #a5f3fc; }
+    .point-option .pixel-die { width: 30px; height: 30px; padding: 3px; border-width: 2px; box-shadow: inset -2px -2px #d5c4a1, 2px 2px #000; }
+    .point-option .pip { width: 4px; height: 4px; }
+    .draft-hint { min-height: 18px; margin: 6px 0 8px; color: var(--text-dim); font-size: 12px; }
+    .draft-hint.warning { color: var(--neon-yellow); }
+    .action-buttons { display: grid; grid-template-columns: minmax(0,1fr) 110px; gap: 12px; }
+    .action-buttons.only-open { grid-template-columns: 1fr; }
+    .feedback { flex-shrink: 0; min-height: 20px; font-size: 12px; margin: 6px 0 0; color: #fda4af; overflow-wrap: anywhere; }
+    .feedback:empty { min-height: 0; margin: 0; }
+    .chat-panel { padding: 16px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .chat-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 2px solid #352749; }
+    .chat-title { font-size: 11px; color: var(--accent-bright); }
+    .chat-header span { font-size: 11px; color: var(--text-dim); }
+    .chat-history { margin: 0; padding: 16px 12px 16px 0; list-style: none; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #75459e #100b20; }
+    .chat-empty { padding: 45px 12px; text-align: center; font-size: 12px; line-height: 2; color: #887a9f; }
+    .chat-message { margin: 0 0 14px; display: flex; flex-direction: column; align-items: flex-start; }
+    .chat-message.player { align-items: flex-end; }
+    .chat-sender { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+    .chat-bubble { max-width: 94%; padding: 9px 11px; border: 2px solid #593581; background: #261539; color: #e9d5ff; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .chat-message.player .chat-bubble { border-color: #2a6349; background: #112b23; color: #bbf7d0; }
+    .chat-activity { margin: 7px 0 13px; text-align: center; font-size: 11px; color: #b8a8d3; }
+    .chat-activity.system { color: #dccd89; }
+    .chat-form { flex-shrink: 0; margin-top: 6px; padding-top: 12px; border-top: 2px solid #352749; }
+    .composer { display: flex; gap: 8px; }
+    .composer input { min-width: 0; flex: 1; padding: 10px; background: #0b0717; border: 2px solid #584687; color: #fff; font-size: 13px; }
+    .composer input::placeholder { color: #9183a6; }
+    .send-btn { padding: 8px 11px; min-height: 42px; font-size: 12px; }
+    .composer-note { margin: 10px 0 0; font-size: 11px; line-height: 1.7; color: var(--text-dim); }
+    /* 玩法规则模态弹窗 */
+    .rules-dialog {
+      padding: 0; border: 4px solid var(--accent); background: #1c1536; color: var(--text);
+      box-shadow: 8px 8px #000; width: min(540px, 92vw); max-height: 85vh; border-radius: 0;
+    }
+    .rules-dialog::backdrop {
+      background: rgba(11, 7, 23, 0.78); backdrop-filter: blur(2px);
+    }
+    .rules-dialog-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 18px;
+      background: #271a47; border-bottom: 2px solid var(--panel-border);
+    }
+    .rules-dialog-title { font-size: 13px; color: var(--neon-yellow); display: flex; align-items: center; gap: 8px; }
+    .rules-close-btn {
+      background: transparent; border: none; color: var(--text-dim); font-size: 16px;
+      cursor: pointer; padding: 2px 6px; line-height: 1;
+    }
+    .rules-close-btn:hover { color: #fff; }
+    .rules-content {
+      padding: 18px; font-size: 13px; line-height: 1.75; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 14px; max-height: calc(85vh - 120px);
+    }
+    .rules-content ul { margin: 6px 0 0; padding-left: 18px; }
+    .rules-content li { margin-bottom: 4px; }
+    .rule-item-title { color: var(--neon-cyan); font-weight: bold; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .rules-dialog-footer {
+      padding: 10px 18px 16px; display: flex; justify-content: flex-end; background: #17112c;
+      border-top: 1px solid #2d204d;
+    }
+    .rolling { animation: dice-shake .09s 6 alternate; }
+    .just-bid { animation: bid-pop .22s ease-out; }
+    @keyframes dice-shake { from { transform: translate(-2px,-2px) rotate(-4deg); } to { transform: translate(2px,2px) rotate(4deg); } }
+    @keyframes bid-pop { from { transform: scale(.94); } to { transform: scale(1); } }
+    @media (max-height: 780px) {
+      body { padding-top: 10px; padding-bottom: 10px; }
+      header { padding-top: 8px; padding-bottom: 8px; }
+      .subtitle { margin-top: 4px; }
+      .avatar { width: 34px; height: 34px; font-size: 20px; }
+      .table { padding: 12px; gap: 6px; }
+      .dice-rack { padding-top: 2px; padding-bottom: 2px; }
+      .seat-speech { min-height: 24px; max-height: 24px; margin-top: 2px; padding-top: 3px; padding-bottom: 3px; }
+      .move-heading { margin-bottom: 6px; }
+      .point-option { padding-top: 3px; padding-bottom: 3px; }
+      .draft-hint { margin-top: 4px; margin-bottom: 6px; }
+      .dice-rack .pixel-die { width: 42px; height: 42px; padding: 4px; }
+      .bid-value { min-height: 42px; margin: 4px 0; }
+      .bid-value .pixel-die { width: 42px; height: 42px; padding: 4px; }
+      .stage-description { margin-top: 4px; font-size: 12px; }
+      .start-btn { margin-top: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 class="pixel">
+        <svg class="pixel-dice-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-hidden="true">
+          <!-- 骰子主体立体底框 (右下浅灰厚度) -->
+          <rect x="5" y="2" width="14" height="20" fill="#cbd5e1" />
+          <rect x="3" y="4" width="18" height="16" fill="#cbd5e1" />
+          <rect x="2" y="6" width="20" height="12" fill="#cbd5e1" />
+          <!-- 骰子象牙白正面 -->
+          <rect x="5" y="2" width="13" height="19" fill="#f8fafc" />
+          <rect x="3" y="4" width="17" height="15" fill="#f8fafc" />
+          <rect x="2" y="6" width="19" height="11" fill="#f8fafc" />
+          <!-- 左上高光亮白 -->
+          <rect x="5" y="2" width="12" height="2" fill="#ffffff" />
+          <rect x="2" y="5" width="2" height="12" fill="#ffffff" />
+          <!-- 经典大话骰大红一点 (正中 8x8 像素切角大圆点) -->
+          <rect x="10" y="8" width="4" height="8" fill="#ef4444" />
+          <rect x="8" y="10" width="8" height="4" fill="#ef4444" />
+          <rect x="9" y="9" width="6" height="6" fill="#dc2626" />
+          <!-- 红心内部像素高光 -->
+          <rect x="10" y="10" width="2" height="2" fill="#f87171" />
+        </svg>
+        <span>LIAR'S DICE</span>
+      </h1>
+      <div class="header-controls">
+        <span id="connection" class="connection" role="status">连接中</span>
+        <button id="rulesToggle" class="small-btn" type="button">📖 玩法说明</button>
+        <button id="audioToggle" class="small-btn" type="button" aria-pressed="true">🔊 音效开</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <section class="pixel-box table" aria-label="大话骰桌">
+        <div class="seat">
+          <div class="seat-header">
+            <div class="profile">
+              <div class="avatar" aria-hidden="true">
+                <svg class="kana-avatar-icon" viewBox="0 0 16 16" width="34" height="34" fill="none" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-label="Kana">
+                  <rect x="7" y="0" width="2" height="1" fill="#d8b4fe" />
+                  <rect x="6" y="1" width="4" height="1" fill="#d8b4fe" />
+                  <rect x="4" y="2" width="8" height="1" fill="#a855f7" />
+                  <rect x="3" y="3" width="10" height="1" fill="#a855f7" />
+                  <rect x="2" y="4" width="3" height="1" fill="#a855f7" />
+                  <rect x="5" y="4" width="1" height="1" fill="#6b21a8" />
+                  <rect x="6" y="4" width="4" height="1" fill="#a855f7" />
+                  <rect x="10" y="4" width="1" height="1" fill="#6b21a8" />
+                  <rect x="11" y="4" width="3" height="1" fill="#a855f7" />
+                  <rect x="2" y="5" width="1" height="1" fill="#a855f7" />
+                  <rect x="3" y="5" width="2" height="1" fill="#6b21a8" />
+                  <rect x="5" y="5" width="6" height="1" fill="#ffedd5" />
+                  <rect x="11" y="5" width="2" height="1" fill="#6b21a8" />
+                  <rect x="13" y="5" width="1" height="1" fill="#a855f7" />
+                  <rect x="2" y="6" width="2" height="1" fill="#6b21a8" />
+                  <rect x="4" y="6" width="1" height="1" fill="#ffedd5" />
+                  <rect x="5" y="6" width="1" height="1" fill="#451a03" />
+                  <rect x="6" y="6" width="1" height="1" fill="#ffffff" />
+                  <rect x="7" y="6" width="2" height="1" fill="#ffedd5" />
+                  <rect x="9" y="6" width="1" height="1" fill="#ffffff" />
+                  <rect x="10" y="6" width="1" height="1" fill="#451a03" />
+                  <rect x="11" y="6" width="1" height="1" fill="#ffedd5" />
+                  <rect x="12" y="6" width="1" height="1" fill="undefined" />
+                  <rect x="13" y="6" width="1" height="1" fill="#6b21a8" />
+                  <rect x="2" y="7" width="2" height="1" fill="#6b21a8" />
+                  <rect x="4" y="7" width="1" height="1" fill="#f472b6" />
+                  <rect x="5" y="7" width="2" height="1" fill="#78350f" />
+                  <rect x="7" y="7" width="2" height="1" fill="#ffedd5" />
+                  <rect x="9" y="7" width="1" height="1" fill="#f472b6" />
+                  <rect x="10" y="7" width="2" height="1" fill="#78350f" />
+                  <rect x="12" y="7" width="1" height="1" fill="#f472b6" />
+                  <rect x="13" y="7" width="1" height="1" fill="#6b21a8" />
+                  <rect x="2" y="8" width="2" height="1" fill="#6b21a8" />
+                  <rect x="4" y="8" width="3" height="1" fill="#ffedd5" />
+                  <rect x="7" y="8" width="2" height="1" fill="#e11d48" />
+                  <rect x="9" y="8" width="3" height="1" fill="#ffedd5" />
+                  <rect x="12" y="8" width="2" height="1" fill="#6b21a8" />
+                  <rect x="3" y="9" width="2" height="1" fill="#6b21a8" />
+                  <rect x="5" y="9" width="6" height="1" fill="#ffedd5" />
+                  <rect x="11" y="9" width="2" height="1" fill="#6b21a8" />
+                  <rect x="3" y="10" width="1" height="1" fill="#a855f7" />
+                  <rect x="4" y="10" width="1" height="1" fill="#6b21a8" />
+                  <rect x="6" y="10" width="4" height="1" fill="#ffedd5" />
+                  <rect x="11" y="10" width="1" height="1" fill="#6b21a8" />
+                  <rect x="12" y="10" width="1" height="1" fill="#a855f7" />
+                  <rect x="2" y="11" width="1" height="1" fill="#a855f7" />
+                  <rect x="3" y="11" width="2" height="1" fill="#6b21a8" />
+                  <rect x="6" y="11" width="4" height="1" fill="#2e1065" />
+                  <rect x="11" y="11" width="2" height="1" fill="#6b21a8" />
+                  <rect x="13" y="11" width="1" height="1" fill="#a855f7" />
+                  <rect x="1" y="12" width="1" height="1" fill="#a855f7" />
+                  <rect x="2" y="12" width="2" height="1" fill="#6b21a8" />
+                  <rect x="4" y="12" width="2" height="1" fill="#2e1065" />
+                  <rect x="6" y="12" width="4" height="1" fill="#facc15" />
+                  <rect x="10" y="12" width="2" height="1" fill="#2e1065" />
+                  <rect x="12" y="12" width="2" height="1" fill="#6b21a8" />
+                  <rect x="14" y="12" width="1" height="1" fill="#a855f7" />
+                  <rect x="1" y="13" width="2" height="1" fill="#6b21a8" />
+                  <rect x="3" y="13" width="10" height="1" fill="#2e1065" />
+                  <rect x="13" y="13" width="2" height="1" fill="#6b21a8" />
+                  <rect x="0" y="14" width="2" height="1" fill="#6b21a8" />
+                  <rect x="4" y="14" width="8" height="1" fill="#2e1065" />
+                  <rect x="14" y="14" width="2" height="1" fill="#6b21a8" />
+                  <rect x="0" y="15" width="2" height="1" fill="#6b21a8" />
+                  <rect x="14" y="15" width="2" height="1" fill="#6b21a8" />
+                </svg>
+              </div>
+              <div class="seat-name pixel">KANA</div>
+            </div>
+            <span id="agentStatus" class="seat-status">等待开局</span>
+          </div>
+          <div id="opponentRack" class="dice-rack" aria-label="Kana 的骰子尚未公开"></div>
+          <div id="agentSpeech" class="seat-speech"></div>
+        </div>
+
+        <div id="tableCenter" class="table-center">
+          <span id="turnBadge" class="turn-badge" role="status">准备开局</span>
+          <div id="bidLabel" class="bid-label">双方各扣 5 颗</div>
+          <div id="bidValue" class="bid-value"><span class="stage-title">骰盅就绪</span></div>
+          <span id="wildPill" class="wild-pill">1 点万能</span>
+          <div id="resultDetails" class="result-details" hidden></div>
+          <button id="startButton" class="pixel-btn primary start-btn" type="button" disabled>🎲 摇骰开局</button>
+        </div>
+
+        <div class="seat">
+          <div class="seat-header">
+            <div class="profile">
+              <div class="avatar player" aria-hidden="true">😎</div>
+              <div class="seat-name player pixel">YOU</div>
+            </div>
+            <span id="playerStatus" class="seat-status">等待开局</span>
+          </div>
+          <div id="playerRack" class="dice-rack" aria-label="你的骰子"></div>
+          <div id="playerSpeech" class="seat-speech"></div>
+        </div>
+
+        <div id="movePanel" class="move-panel" hidden>
+          <div class="move-heading"><strong>叫点</strong><span id="moveNote"></span></div>
+          <div id="bidControls" class="bid-controls">
+            <div>
+              <span class="control-label">数量</span>
+              <div class="stepper">
+                <button id="minusButton" type="button" aria-label="减少数量">−</button>
+                <output id="draftCount" class="pixel" aria-live="polite">2</output>
+                <button id="plusButton" type="button" aria-label="增加数量">+</button>
+              </div>
+            </div>
+            <div><span class="control-label">点数</span><div id="pointPicker" class="point-picker" role="group" aria-label="选择叫点点数"></div></div>
+          </div>
+          <p id="draftHint" class="draft-hint"></p>
+          <div id="actionButtons" class="action-buttons">
+            <button id="callButton" class="pixel-btn" type="button">叫 2 个 2</button>
+            <button id="openButton" class="pixel-btn danger" type="button">开盅！</button>
+          </div>
+        </div>
+        <p id="actionFeedback" class="feedback" role="status"></p>
+      </section>
+
+      <aside class="pixel-box chat-panel" aria-label="双方对话与对局记录">
+        <div class="chat-header"><strong class="chat-title pixel">TABLE TALK</strong><span>实时动态</span></div>
+        <ol id="chatHistory" class="chat-history" aria-label="对局记录"></ol>
+        <form id="chatForm" class="chat-form">
+          <div class="composer">
+            <input id="talkInput" type="text" autocomplete="off" aria-label="台词" placeholder="放句狠话试探一下…" disabled>
+            <button id="sendButton" class="pixel-btn send-btn" type="submit" disabled>发送</button>
+          </div>
+          <p class="composer-note">Enter 发送 · 叫点或开盅时将附带台词</p>
+          <p id="chatFeedback" class="feedback" role="status"></p>
+        </form>
+      </aside>
+    </main>
+
+  </div>
+
+  <dialog id="rulesModal" class="rules-dialog" aria-labelledby="rulesTitle">
+    <div class="rules-dialog-header">
+      <div id="rulesTitle" class="rules-dialog-title pixel">📖 大话骰玩法指南</div>
+      <button id="rulesCloseBtn" class="rules-close-btn pixel" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="rules-content">
+      <div class="rule-item">
+        <div class="rule-item-title pixel">🎲 1. 摇骰与暗扣</div>
+        <div>开局双方各摇 5 颗骰子，扣在各自骰盅内（全场总共 10 颗）。你只能看见自己的手牌，对手的点数全靠博弈试探与概率推断。</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-item-title pixel">🗣️ 2. 叫点与加码</div>
+        <div>叫点是在猜测「双方手中该点数的总和」。最低 <strong>2 个起叫</strong>（如“3 个 4”）。轮到出招时必须往上加：要么<strong>报更多数量</strong>（如“4 个 2”），要么在<strong>相同数量下报更高点数</strong>（如“3 个 5”）。</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-item-title pixel">✨ 3. 万能 1 点（通配规则）</div>
+        <div>在任何人主动叫过「1 点」之前，1 点可以充当<strong>任意点数</strong>（万能通配符）。一旦有玩家叫了 1 点，全场的 1 点立刻失去通配功能，只能当纯粹的 1 点计算。</div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-item-title pixel">🏆 4. 喊开与定输赢</div>
+        <div>如果你觉得对方在虚张声势吹牛，轮到你时果断点击<strong>「开盅」</strong>：
+          <ul>
+            <li><strong>对方叫准了</strong>：场上实际数量 ≥ 叫点 ➔ 对方叫点成立，你开错判负！</li>
+            <li><strong>被你抓包了</strong>：场上实际数量 &lt; 叫点 ➔ 对方吹牛被抓，你获胜！</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="rules-dialog-footer">
+      <button id="rulesConfirmBtn" class="pixel-btn primary" type="button" style="min-height: 38px; padding: 6px 18px; font-size: 12px;">知道了，开战！</button>
+    </div>
+  </dialog>
+
+<script>
+  let audioEnabled = true;
+  let audioCtx = null;
+
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function sfxBeep(freq, duration, type) {
+    if (!freq) freq = 520;
+    if (!duration) duration = 0.08;
+    if (!type) type = 'square';
+    if (!audioEnabled || !audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function sfxDiceShake() {
+    if (!audioEnabled || !audioCtx) return;
+    try {
+      const bufferSize = audioCtx.sampleRate * 0.18;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+      filter.Q.setValueAtTime(3, audioCtx.currentTime);
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      noise.start();
+    } catch (e) {}
+  }
+
+  function sfxOpenImpact() {
+    if (!audioEnabled || !audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch (e) {}
+  }
+
+  function sfxWin() {
+    if (!audioEnabled || !audioCtx) return;
+    const notes = [261.63, 329.63, 392.00, 523.25];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => sfxBeep(freq, 0.12, 'triangle'), idx * 90);
+    });
+  }
+
+  function sfxLose() {
+    if (!audioEnabled || !audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(90, audioCtx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {}
+  }
+
+
+  const $ = id => document.getElementById(id);
+  const PIPS = { 1: [4], 2: [0,8], 3: [0,4,8], 4: [0,2,6,8], 5: [0,2,4,6,8], 6: [0,2,3,5,6,8] };
+  const diceSymbols = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  let playerToken = '';
+  let currentSeq = 0;
+  let lastRenderedSeq = -1;
+  let gameState = null;
+  let connected = false;
+  let pendingAction = '';
+  let draft = { count: 2, point: 2 };
+  let draftTouched = false;
+  let historyKey = '';
+
+  function createDie(point, highlighted = false) {
+    const el = document.createElement('div');
+    el.className = 'pixel-die' + (highlighted ? ' highlight' : '');
+    el.setAttribute('aria-label', point + ' 点');
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('span');
+      if (PIPS[point].includes(i)) {
+        const pip = document.createElement('i');
+        pip.className = 'pip' + (point === 1 ? ' red' : '');
+        cell.appendChild(pip);
+      }
+      el.appendChild(cell);
+    }
+    return el;
+  }
+
+  function renderRack(id, dice, placeholder, highlightPoint, wild) {
+    const rack = $(id);
+    rack.replaceChildren();
+    if (dice && dice.length) {
+      for (const point of dice) rack.appendChild(createDie(point, point === highlightPoint || (wild && point === 1)));
+      rack.setAttribute('aria-label', (id === 'playerRack' ? '你的骰子：' : 'Kana 的骰子：') + dice.join('、'));
+    } else {
+      for (let i = 0; i < 5; i++) {
+        const el = document.createElement('div');
+        el.className = 'pixel-die hidden-die pixel';
+        el.textContent = placeholder;
+        rack.appendChild(el);
+      }
+      rack.setAttribute('aria-label', id === 'opponentRack' ? 'Kana 的骰子尚未公开' : '等待摇骰');
+    }
+  }
+
+  for (let point = 1; point <= 6; point++) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'point-option';
+    button.dataset.point = point;
+    button.setAttribute('aria-label', '选择 ' + point + ' 点');
+    button.setAttribute('aria-pressed', point === draft.point ? 'true' : 'false');
+    button.appendChild(createDie(point));
+    const label = document.createElement('span');
+    label.textContent = point + ' 点';
+    button.appendChild(label);
+    button.onclick = () => {
+      draftTouched = true;
+      draft.point = point;
+      draft.count = Math.max(draft.count, minimumCount(point));
+      renderDraft();
+    };
+    $('pointPicker').appendChild(button);
+  }
+
+  function minimumCount(point) {
+    const bid = gameState && gameState.currentBid;
+    return bid ? bid.count + (point <= bid.point ? 1 : 0) : 2;
+  }
+
+  function fitDraft(reset, bidChanged) {
+    if (reset) {
+      draft = { count: 2, point: 2 };
+      draftTouched = false;
+    }
+    if (!reset && bidChanged && !draftTouched && gameState.currentBid) {
+      const bid = gameState.currentBid;
+      draft = bid.point < 6 ? { count: bid.count, point: bid.point + 1 } : { count: bid.count + 1, point: 1 };
+    }
+    if (minimumCount(draft.point) <= 10) {
+      draft.count = Math.max(minimumCount(draft.point), Math.min(10, draft.count));
+    } else {
+      const point = [1,2,3,4,5,6].find(point => minimumCount(point) <= 10);
+      if (point) draft = { count: minimumCount(point), point };
+    }
+  }
+
+  function renderDraft() {
+    const playing = gameState && gameState.status === 'playing';
+    const canChoose = connected && playing && !pendingAction;
+    const legal = playing && minimumCount(draft.point) <= 10 && draft.count >= minimumCount(draft.point) && draft.count <= 10;
+    const canAct = connected && playing && gameState.isMyTurn && !pendingAction;
+    $('draftCount').textContent = draft.count;
+    $('minusButton').disabled = !canChoose || draft.count <= minimumCount(draft.point);
+    $('plusButton').disabled = !canChoose || draft.count >= 10;
+    for (const button of $('pointPicker').children) {
+      const point = Number(button.dataset.point);
+      button.disabled = !canChoose || minimumCount(point) > 10;
+      button.setAttribute('aria-pressed', point === draft.point ? 'true' : 'false');
+    }
+    $('bidControls').hidden = playing && !legal;
+    $('callButton').hidden = playing && !legal;
+    $('callButton').disabled = !canAct || !legal;
+    $('callButton').textContent = pendingAction === 'call' ? '正在叫点…' : `叫 ${draft.count} 个 ${draft.point}`;
+    $('openButton').disabled = !canAct || !gameState.currentBid;
+    $('openButton').textContent = pendingAction === 'open' ? '正在开盅…' : '开盅！';
+    $('actionButtons').classList.toggle('only-open', playing && !legal);
+    $('draftHint').classList.toggle('warning', Boolean(playing && (!legal || (draft.point === 1 && gameState.onesAreWild))));
+    $('draftHint').textContent = !playing ? '' : !legal ? '数量已达上限（10颗），必须开盅！' :
+      draft.point === 1 && gameState.onesAreWild ? '⚠️ 叫 1 点后，全场 1 点将立即失去通配属性！' :
+      gameState.currentBid ? `继续叫该点数至少要 ${minimumCount(draft.point)} 个` : '起步最少报 2 个';
+  }
+
+  function refreshControls() {
+    $('startButton').disabled = !connected || Boolean(pendingAction);
+    $('startButton').textContent = pendingAction === 'new' ? '正在摇骰…' : gameState && gameState.status === 'ended' ? '🔄 再来一局' : '🎲 摇骰开局';
+    $('sendButton').disabled = !connected || Boolean(pendingAction) || !$('talkInput').value.trim();
+    $('sendButton').textContent = pendingAction === 'talk' ? '发送中…' : '发送';
+    $('talkInput').disabled = !connected;
+    renderDraft();
+  }
+
+  function setConnected(value) {
+    connected = value;
+    $('connection').textContent = value ? '骰桌在线' : '连接中…';
+    $('connection').className = 'connection ' + (value ? 'online' : 'offline');
+    refreshControls();
+  }
+
+  function renderHistory(state, reset) {
+    const key = JSON.stringify(state.history);
+    if (key === historyKey && !reset) return;
+    historyKey = key;
+    const list = $('chatHistory');
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 45;
+    const scrollTop = list.scrollTop;
+    list.replaceChildren();
+    if (!state.history.length) {
+      const empty = document.createElement('li');
+      empty.className = 'chat-empty';
+      empty.textContent = '对局就绪，出招前放句狠话打乱对手节奏吧！';
+      list.appendChild(empty);
+    }
+    for (const entry of state.history) {
+      const who = entry.sender === 'player' ? '你' : 'Kana';
+      if (entry.type !== 'talk') {
+        const activity = document.createElement('li');
+        activity.className = 'chat-activity' + (entry.sender === 'system' ? ' system' : '');
+        activity.textContent = entry.type === 'call' ? `${who} 叫了 ${entry.count} 个 ${entry.point} 点` :
+          entry.type === 'open' ? `${who} 喊了开盅！` : entry.text;
+        list.appendChild(activity);
+      }
+      if (entry.message) {
+        const message = document.createElement('li');
+        message.className = 'chat-message ' + entry.sender;
+        const label = document.createElement('span');
+        label.className = 'chat-sender';
+        label.textContent = who;
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.textContent = entry.message;
+        message.append(label, bubble);
+        list.appendChild(message);
+      }
+    }
+    list.scrollTop = reset || atBottom ? list.scrollHeight : scrollTop;
+  }
+
+  function renderSpeech(state, role, id) {
+    const last = [...state.history].reverse().find(entry => entry.sender === role && entry.message);
+    $(id).textContent = last ? last.message : '';
+    $(id).title = last ? last.message : '';
+    $(id).className = 'seat-speech' + (last ? ' spoken' + (role === 'player' ? ' player' : '') : '');
+  }
+
+  function renderState(previous, resetDraft) {
+    const state = gameState;
+    const playing = state.status === 'playing';
+    const ended = state.status === 'ended';
+    const bidChanged = JSON.stringify(previous && previous.currentBid) !== JSON.stringify(state.currentBid);
+    fitDraft(resetDraft, bidChanged);
+    const point = state.currentBid && state.currentBid.point;
+    const wild = Boolean(point && point !== 1 && state.onesAreWild);
+    renderRack('playerRack', state.myDice, '−', point, wild);
+    renderRack('opponentRack', state.opponentDice, '?', point, wild);
+    renderSpeech(state, 'agent', 'agentSpeech');
+    renderSpeech(state, 'player', 'playerSpeech');
+    renderHistory(state, resetDraft);
+    $('movePanel').hidden = !playing;
+    $('startButton').hidden = playing;
+    $('resultDetails').hidden = !ended;
+    $('wildPill').textContent = state.onesAreWild ? '1 点万能' : '1 点不通配';
+    $('agentStatus').textContent = ended ? '已封盅结算' : playing ? state.isMyTurn ? '👉 等你出招' : '🤔 思考中…' : '就绪';
+    $('playerStatus').textContent = ended ? '已封盅结算' : playing ? state.isMyTurn ? '👉 轮到你出招' : '⏳ 等待回应…' : '就绪';
+    const badge = $('turnBadge');
+    badge.className = 'turn-badge';
+    badge.textContent = playing ? state.isMyTurn ? '👉 轮到你出招！' : '⏳ Kana 思考中…' : ended ? state.result.winner === 'player' ? '🎉 你赢下了这局！' : '😈 Kana 赢下此局！' : '等待开局';
+    if (playing) badge.classList.add(state.isMyTurn ? 'your-turn' : 'agent-turn');
+    if (ended) badge.classList.add(state.result.winner === 'player' ? 'win' : 'lose');
+    $('bidLabel').textContent = state.currentBid ? (state.currentBid.bidder === 'player' ? '你的叫点' : 'Kana 的叫点') : playing ? '等待先手起叫' : '双方各扣 5 颗';
+    const value = $('bidValue');
+    value.replaceChildren();
+    if (state.currentBid) {
+      const number = document.createElement('span');
+      number.className = 'bid-number pixel';
+      number.textContent = state.currentBid.count;
+      const unit = document.createElement('span');
+      unit.textContent = '个';
+      value.append(number, unit, createDie(point));
+      value.setAttribute('aria-label', `${state.currentBid.count} 个 ${point} 点`);
+    } else {
+      const title = document.createElement('span');
+      title.className = 'stage-title';
+      title.textContent = playing ? '由你先手叫点' : '骰盅就绪';
+      if (playing && !state.isMyTurn) title.textContent = '等待 Kana 先手起叫…';
+      value.appendChild(title);
+      value.removeAttribute('aria-label');
+    }
+    if (ended) {
+      const r = state.result;
+      $('resultDetails').replaceChildren();
+      const line = document.createElement('div');
+      line.textContent = `全场实际共有 ${r.actualCount} 个 ${r.targetPoint} 点（先前叫了 ${r.bidCount} 个${r.onesAreWild ? '，含万能 1 点' : ''}）`;
+      const reason = document.createElement('div');
+      reason.style.marginTop = '4px';
+      reason.style.fontWeight = 'bold';
+      const isPlayerOpener = r.opener === 'player';
+      const isSuccess = r.actualCount < r.bidCount;
+      if (isSuccess) {
+        reason.textContent = isPlayerOpener ? '🎯 抓得漂亮！对方果然在吹牛虚报！' : '😈 被 Kana 抓个正着！吹牛露馅了吧~';
+      } else {
+        reason.textContent = isPlayerOpener ? '💥 哎呀开错了！场上点数完全足够！' : '👏 Kana 算漏了！你叫的点数完全成立！';
+      }
+      $('resultDetails').append(line, reason);
+    }
+    $('moveNote').textContent = state.isMyTurn ? '' : '（未轮到你，可预设点数）';
+    refreshControls();
+  }
+
+  function applySnapshot(snapshot, reset = false) {
+    if (reset) {
+      currentSeq = 0;
+      lastRenderedSeq = -1;
+      historyKey = '';
+    }
+    if (snapshot.seq < currentSeq) return;
+    const events = snapshot.events.filter(event => event.seq > currentSeq);
+    const changed = snapshot.seq !== lastRenderedSeq;
+    currentSeq = snapshot.seq;
+    if (changed) {
+      const previous = gameState;
+      gameState = snapshot.state;
+      renderState(previous, reset || events.some(event => event.type === 'game_start') || (!previous && gameState.status === 'playing'));
+      lastRenderedSeq = snapshot.seq;
+    }
+    for (const event of events) {
+      if (event.type === 'game_start') {
+        if (gameState.status === 'playing') {
+          $('playerRack').classList.remove('rolling');
+          void $('playerRack').offsetWidth;
+          $('playerRack').classList.add('rolling');
+        }
+        sfxDiceShake();
+      } else if (event.type === 'chat_talk') {
+        sfxBeep(450, .08);
+      } else if (event.type === 'action_call') {
+        $('bidValue').classList.remove('just-bid');
+        void $('bidValue').offsetWidth;
+        $('bidValue').classList.add('just-bid');
+        sfxBeep(680, .09);
+      } else if (event.type === 'action_open') {
+        sfxOpenImpact();
+        const won = event.data.result.winner === 'player';
+        setTimeout(() => won ? sfxWin() : sfxLose(), 180);
+      }
+    }
+  }
+
+  async function synchronize() {
+    const authResponse = await fetch('/api/v1/player/auth', { method: 'POST' });
+    if (!authResponse.ok) throw new Error('连接失败');
+    playerToken = (await authResponse.json()).playerToken;
+    const response = await fetch('/api/v1/state', { headers: { Authorization: 'Bearer ' + playerToken } });
+    const snapshot = await response.json();
+    if (!response.ok || !snapshot.success) throw new Error(snapshot.error || '读取状态失败');
+    applySnapshot(snapshot, true);
+    setConnected(true);
+  }
+
+  async function subscribe() {
+    while (true) {
+      try {
+        if (!connected) await synchronize();
+        const response = await fetch('/api/v1/wait', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + playerToken },
+          body: JSON.stringify({ after: currentSeq, timeoutMs: 30000, waitFor: 'event' })
+        });
+        if (response.status === 403) {
+          setConnected(false);
+          continue;
+        }
+        const snapshot = await response.json();
+        if (!response.ok || !snapshot.success) throw new Error(snapshot.error || '订阅失败');
+        applySnapshot(snapshot);
+      } catch (err) {
+        setConnected(false);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  async function doAction(payload) {
+    if (pendingAction || !connected) return;
+    initAudio();
+    pendingAction = payload.action;
+    const feedback = payload.action === 'talk' ? $('chatFeedback') : $('actionFeedback');
+    feedback.textContent = '';
+    refreshControls();
+    try {
+      const response = await fetch('/api/v1/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + playerToken },
+        body: JSON.stringify({ ...payload, after: currentSeq, wait: 'none' })
+      });
+      const snapshot = await response.json();
+      if (snapshot.state) {
+        if (snapshot.success && payload.action === 'call') draftTouched = false;
+        applySnapshot(snapshot);
+      }
+      if (!response.ok || !snapshot.success) {
+        if (response.status === 403) setConnected(false);
+        throw new Error(snapshot.error || '操作失败，请再试一次');
+      }
+      if (payload.message && $('talkInput').value.trim() === payload.message) $('talkInput').value = '';
+    } catch (err) {
+      feedback.textContent = err.message;
+    } finally {
+      pendingAction = '';
+      refreshControls();
+    }
+  }
+
+  $('minusButton').onclick = () => { draftTouched = true; draft.count--; renderDraft(); };
+  $('plusButton').onclick = () => { draftTouched = true; draft.count++; renderDraft(); };
+  $('startButton').onclick = () => doAction({ action: 'new', starter: 'player' });
+  $('callButton').onclick = () => doAction({ action: 'call', ...draft, message: $('talkInput').value.trim() });
+  $('openButton').onclick = () => doAction({ action: 'open', message: $('talkInput').value.trim() });
+  $('talkInput').oninput = refreshControls;
+  $('chatForm').onsubmit = event => {
+    event.preventDefault();
+    const message = $('talkInput').value.trim();
+    if (message) doAction({ action: 'talk', message });
+  };
+  $('audioToggle').onclick = () => {
+    initAudio();
+    audioEnabled = !audioEnabled;
+    $('audioToggle').textContent = audioEnabled ? '🔊 音效开' : '🔈 音效关';
+    $('audioToggle').setAttribute('aria-pressed', String(audioEnabled));
+    sfxBeep(600, .05);
+  };
+  const rulesModal = $('rulesModal');
+  $('rulesToggle').onclick = () => rulesModal.showModal();
+  $('rulesCloseBtn').onclick = () => rulesModal.close();
+  $('rulesConfirmBtn').onclick = () => rulesModal.close();
+  rulesModal.onclick = event => { if (event.target === rulesModal) rulesModal.close(); };
+  renderRack('playerRack', [], '−');
+  renderRack('opponentRack', [], '?');
+  renderHistory({ history: [] }, true);
+  refreshControls();
+  subscribe();
+</script>
+</body>
+</html>
