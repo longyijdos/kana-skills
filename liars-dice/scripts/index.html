@@ -606,7 +606,7 @@
     }
     if (!reset && bidChanged && !draftTouched && gameState.currentBid) {
       const bid = gameState.currentBid;
-      draft = bid.point < 6 ? { count: bid.count, point: bid.point + 1 } : { count: bid.count + 1, point: 1 };
+      draft = bid.point < 6 ? { count: bid.count, point: bid.point + 1 } : { count: bid.count + 1, point: 6 };
     }
     if (minimumCount(draft.point) <= 10) {
       draft.count = Math.max(minimumCount(draft.point), Math.min(10, draft.count));
