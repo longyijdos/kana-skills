@@ -10,7 +10,7 @@ A collection of local skills for Kana, organized as self-contained directories.
 | `deepseek-balance` | DeepSeek balance queries |
 | `edge-tts` | Speak messages aloud through `kana-say` (Edge TTS) |
 | `gmail-cli` | Gmail workflows through `gml` |
-| `liars-dice` | Play Liar's Dice (大话骰) with a retro web UI and CLI |
+| `kana-games` | Install [kana-games](https://github.com/longyijdos/kana-games) and hand off to its skills to play turn-based games with the user |
 | `mermaid-skill` | Mermaid diagram workflows |
 | `netease-musicbox` | NetEase Cloud Music controls |
 | `notes-repo` | Maintain a personal notes repository located via `KANA_NOTES_REPO`, following the repository's own declared conventions |
