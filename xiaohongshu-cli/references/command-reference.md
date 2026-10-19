@@ -1,6 +1,6 @@
 # Command Reference
 
-This is the operational reference for `xiaohongshu-cli` 0.6.4. Commands use JSON
+This is the operational reference for the `xiaohongshu-cli` fork (reports 0.6.4). Commands use JSON
 output so their results can be inspected safely and consistently.
 
 ```bash
@@ -178,8 +178,13 @@ xhs post \
   --json
 ```
 
-Add one approved `--topic "<topic>"` flag per topic. Hashtags in the body may also
-be resolved by the CLI; keep the combined topic set concise. The command uploads each
+Topics: write approved hashtags at the end of the body (`#Mac软件 #开源工具`) and/or
+pass `--topic "<topic>"`, repeatable. The CLI searches each one, binds the matching
+topic, and rewrites the body tag into Xiaohongshu's linked form `#name[话题]#`;
+`--topic` values missing from the body are appended to it. Up to 10 topics are used,
+and a tag with no search result stays plain text (the CLI prints a notice). Check
+candidate names first with `xhs topics "<keyword>" --json` and prefer existing
+topics with real view counts. The command uploads each
 given image, then creates an image note. There is no CLI dry-run mode, so the final
 confirmation is the preflight.
 

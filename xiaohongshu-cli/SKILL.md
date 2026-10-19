@@ -38,8 +38,12 @@ for this skill.
 Install the CLI only when `xhs` is unavailable:
 
 ```bash
-uv tool install xiaohongshu-cli
+uv tool install "git+https://github.com/longyijdos/xiaohongshu-cli@main"
 ```
+
+This is a fork of `jackwener/xiaohongshu-cli` (upstream release 0.6.4, inactive since
+March 2026) with working topic binding for `xhs post`. The PyPI release attaches at
+most one topic and leaves body hashtags as plain text.
 
 The CLI stores account state outside this repository in `~/.xiaohongshu-cli/`.
 It can contain saved cookies and short-lived caches. Do not put drafts or rendered
@@ -72,7 +76,7 @@ publish video notes.
 
 ## Version and drift
 
-This reference was written against `xiaohongshu-cli` 0.6.4. Before relying on a
+This reference was written against the fork above (reports version 0.6.4). Before relying on a
 newly introduced option or after upgrading the tool, run:
 
 ```bash
