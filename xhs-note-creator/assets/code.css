@@ -1,0 +1,45 @@
+/* ray.so-like code windows on a soft gradient. */
+.layout-code .canvas { display: flex; flex-direction: column; justify-content: center; padding: 88px 64px; }
+.layout-code.theme-sunset .canvas { background: linear-gradient(140deg, #fbd3a6 0%, #f6a98c 55%, #e98b8b 100%); }
+.layout-code.theme-breeze .canvas { background: linear-gradient(140deg, #cfe3ff 0%, #a7c7f2 50%, #b9a7ef 100%); }
+.layout-code.theme-mono .canvas { background: linear-gradient(160deg, #ececec 0%, #d9d9d9 100%); }
+
+.layout-code .stack { --fit-max: 1.45; display: flex; flex-direction: column; gap: 1.6em; font-size: 20px; }
+
+.layout-code .window {
+  border-radius: 20px;
+  background: #1e1f24;
+  box-shadow: 0 30px 80px rgba(60, 30, 20, .28), 0 0 0 1px rgba(255, 255, 255, .06) inset;
+  overflow: hidden;
+}
+.layout-code .chrome { position: relative; display: flex; gap: 14px; align-items: center; height: 64px; padding: 0 26px; }
+.layout-code .chrome i { width: 20px; height: 20px; border-radius: 50%; background: #ff5f57; }
+.layout-code .chrome i:nth-child(2) { background: #febc2e; }
+.layout-code .chrome i:nth-child(3) { background: #28c840; }
+.layout-code .chrome span { position: absolute; left: 0; right: 0; text-align: center; color: #9a9ca5; font-size: 26px; font-weight: 600; pointer-events: none; }
+
+.layout-code .code {
+  margin: 0;
+  padding: 8px 40px 40px;
+  color: #e6e6e6;
+  font-size: 1.5em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.layout-code .line { min-height: 1.62em; }
+.layout-code .tok-cmd { color: #ffcb6b; }
+.layout-code .tok-flag { color: #89ddff; }
+.layout-code .tok-str { color: #c3e88d; }
+.layout-code .tok-comment { color: #7f8592; }
+
+.layout-code .note { color: #2b1d17; font-size: 1.75em; line-height: 1.55; font-weight: 500; }
+.layout-code .note p { margin: 0 0 .4em; }
+.layout-code.theme-breeze .note { color: #1b2440; }
+
+.layout-code.is-cover .canvas { justify-content: flex-start; padding-top: 150px; gap: 80px; }
+.layout-code .cover-text h1 { margin: 0; color: #2a1610; font-size: 100px; line-height: 1.15; font-weight: 800; letter-spacing: -.02em; }
+.layout-code.theme-breeze .cover-text h1 { color: #141c35; }
+.layout-code .cover-text .subtitle { margin: 30px 0 0; color: rgba(42, 22, 16, .75); font-size: 42px; line-height: 1.45; }
+.layout-code .preview { font-size: 16px; }
+.layout-code .preview .window { transform: rotate(-2deg); }

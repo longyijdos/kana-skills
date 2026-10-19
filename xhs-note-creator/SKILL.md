@@ -1,10 +1,11 @@
 ---
 name: xhs-note-creator
 description: |
-  Use this to turn approved Xiaohongshu (小红书, XHS) post ideas, source material,
-  and copy into a local, reviewable draft with a cover and PNG text cards. This
-  skill creates publishing assets only; it never logs into Xiaohongshu, uploads
-  images, or publishes a note.
+  Use this to turn approved Xiaohongshu (小红书, XHS) post ideas, the user's own
+  screenshots or code, and their notes into a local, reviewable image-post draft.
+  Layouts: real screenshots, ray.so-style code windows, a one-item-per-page
+  roundup, or plain text. Creates publishing assets only; it never logs into
+  Xiaohongshu, uploads images, or publishes a note.
 ---
 
 # XHS Note Creator
@@ -13,20 +14,24 @@ Create a self-contained local draft for one Xiaohongshu image post. The resultin
 images are inputs to the separate `xiaohongshu-cli` skill; do not invoke `xhs post`
 from this skill.
 
+Posts that do well in tech and tools categories are built from real material:
+screenshots, screen recordings, terminal output, and first-person notes. Designed
+text cards are the exception. Before writing anything, read
+`references/style-guide.md`; it lists what makes a post read as machine-written.
+
 ## Local layout
 
 Keep all user-created materials in `drafts/`, which is intentionally ignored by Git:
 
 ```text
 drafts/<slug>/
-├── manifest.json      # title, subtitle, theme, tags, and post metadata
+├── manifest.json      # layout, theme, title, subtitle, tags
 ├── note.md            # final Xiaohongshu body copy
-├── cards.md           # text-card content, separated into pages with ---
-├── source/            # user-supplied source images or notes
+├── cards.md           # page content, separated by --- lines
+├── source/            # the user's screenshots, icons, and notes
 └── output/
     ├── cover.png
-    ├── card-01.png
-    └── card-02.png
+    └── card-01.png ...
 ```
 
 Never place drafts in `~/.xiaohongshu-cli/`; that directory contains account cookies
@@ -41,68 +46,84 @@ npm install
 npx playwright install chromium
 ```
 
-This installs the local rendering dependency and browser runtime. It does not log in
-to Xiaohongshu or access browser cookies.
-
 ## Workflow
 
-### 1. Create a draft
+### 1. Collect material and pick a layout
 
-Choose a stable, filesystem-safe slug and create the local draft structure:
+Ask the user what real material they have before choosing a layout, and copy it into
+`source/`. If they have none for a tool or app post, suggest taking a few screenshots
+first rather than falling back to text cards.
+
+| Layout | Use when | Every page needs |
+| --- | --- | --- |
+| `screenshots` (default) | Showing an app, a tool's result, before/after | an image line |
+| `code` | Commands, config, short snippets | a fenced code block |
+| `collection` | Recommending several apps or projects | `# Name` plus an icon image; a page without an image becomes a summary page |
+| `text` | Opinion or story with no visual material | headings and short paragraphs |
+
+Ask for the user's own experience with the topic (why they made or use it, what
+went wrong, what they actually use) when the material does not already contain it.
+Do not invent experiences, numbers, or star counts.
+
+### 2. Create the draft
 
 ```bash
 python scripts/create_draft.py "2026-06-22-shell-guide" \
-  --title "再也不用手搓复杂 shell 命令了" \
-  --subtitle "3 个高频场景直接复制"
+  --title "终端里每天都在用的 3 个小操作" \
+  --layout code --theme sunset
 ```
 
-Edit these files before rendering:
+Themes: `screenshots` light / dark / blur, `code` sunset / breeze / mono,
+`collection` paper, `text` paper / ink.
 
-- `manifest.json`: final title, subtitle, theme, and tags.
-- `note.md`: final publish-body copy, including line breaks and hashtags.
-- `cards.md`: visual card text. It is deliberately separate from `note.md`.
+Manifest options: `cover: false` skips the cover (raw-screenshot posts often do
+well without one); `cover_image` picks the screenshots cover image (defaults to the
+first page image); `kicker` and `cover_note` add the small label and footer on a
+collection cover.
 
-Each `---` on its own line in `cards.md` creates a new image card. Keep one card
-focused on one idea and under roughly 300 Chinese characters. Use short headings,
-short paragraphs, bullets, and code snippets; do not place raw URLs or dense walls
-of text in the card copy.
+### 3. Write cards.md
 
-### 2. Render local assets
+Pages are separated by a `---` line. Image paths are relative to the draft.
+
+- `screenshots`: `![](source/shot.png)`, optional `# title`, optional one-line caption.
+  Landscape screenshots leave empty space in 3:4; crop to the relevant area when it helps.
+- `code`: a fence like ```` ```zsh Window title ````, comments in the user's own words,
+  lines up to about 40 characters, optional one or two sentences below the block.
+- `collection`: `# Name`, `![](source/icon.png)`, `meta: category`, `## one-line summary`,
+  a sentence of personal use, `tags: a, b`. A final page with `- need → item` rows
+  renders as a comparison table.
+- `text`: `# heading` and short paragraphs, one idea per page, `> quote` for one key line.
+
+Text is scaled automatically to fill the page without overflowing.
+
+### 4. Render and look at the result
 
 ```bash
 node scripts/render_cards.js --draft "drafts/2026-06-22-shell-guide"
 ```
 
-The renderer creates a 1080×1440 `cover.png` and one 1080×1440 PNG per non-empty
-card section. Supported themes are `paper`, `ink`, and `coral`.
+Open the PNGs and check them visually before handing off.
 
-### 3. Validate before handoff
+### 5. Validate
 
 ```bash
 python scripts/validate_draft.py "drafts/2026-06-22-shell-guide"
 ```
 
-Validation fails when required files are missing, the title exceeds 20 characters,
-the rendered image count is not 1–9, or any generated image is not 1080×1440.
-Warnings identify dense card copy or missing tags.
+Errors: missing files, missing referenced images, title over 20 characters, image
+count outside 1–9, wrong image size, pages that do not match the layout. Warnings:
+stock phrases, emoji used as decoration or list markers, long code lines, dense pages,
+missing tags. Fix warnings by rewriting, not by rewording around the check.
 
-### 4. Handoff only
+### 6. Hand off
 
-After validation, report the exact local paths for:
-
-- `manifest.json`
-- `note.md`
-- `output/cover.png` and `output/card-*.png`
-
+Report the exact local paths for `manifest.json`, `note.md`, and the output images.
 Use the separate `xiaohongshu-cli` skill only if the user later asks to publish. That
 skill must show the final title, body, image list, and privacy setting and obtain
 explicit confirmation before publishing.
 
-## Content requirements
+## Limits
 
-- Keep the title at 20 characters or fewer.
-- Make the cover title concise; its purpose is scanning, not full explanation.
-- Use 1–8 body cards, so cover plus body stays within Xiaohongshu's 9-image limit.
-- Treat generated cards as a draft: inspect them visually before publishing.
+- Title 20 characters or fewer; at most 9 images including the cover.
 - Never claim that a card has been uploaded or published; this skill has no account
   access and performs no network requests to Xiaohongshu.
