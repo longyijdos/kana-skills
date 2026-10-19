@@ -11,9 +11,9 @@ A collection of local skills for Kana, organized as self-contained directories.
 | `edge-tts` | Speak messages aloud through `kana-say` (Edge TTS) |
 | `gmail-cli` | Gmail workflows through `gml` |
 | `kana-games` | Install [kana-games](https://github.com/longyijdos/kana-games) and hand off to its skills to play turn-based games with the user |
-| `mermaid-skill` | Mermaid diagram workflows |
 | `netease-musicbox` | NetEase Cloud Music controls |
 | `notes-repo` | Maintain a personal notes repository located via `KANA_NOTES_REPO`, following the repository's own declared conventions |
+| `tldraw-offline` | Read, tidy, and edit tldraw Desktop canvases through its local agent API |
 | `web-fetch` | Readable content extraction from URLs |
 | `web-search` | Web search workflows |
 | `xhs-note-creator` | Create reviewable Xiaohongshu post assets |

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Call the tldraw Desktop local agent API.
+#
+#   tq readme                       print the API docs (no auth)
+#   tq search            < code.js  POST /api/search
+#   tq exec <docId>      < code.js  POST /api/doc/<docId>/exec
+#   tq <METHOD> <path>   [< body]   any other endpoint, e.g. tq GET /api/doc/<docId>/script-status
+#
+# JavaScript for search/exec is read from stdin and posted as text/plain.
+# Port and token are re-read from server.json on every call (the token changes each launch).
+set -euo pipefail
+
+case "$(uname -s)" in
+  Darwin) SJ="$HOME/Library/Application Support/tldraw/server.json" ;;
+  Linux) SJ="${XDG_CONFIG_HOME:-$HOME/.config}/tldraw/server.json" ;;
+  *) SJ="${APPDATA:-$HOME/AppData/Roaming}/tldraw/server.json" ;;
+esac
+SJ="${TLDRAW_SERVER_JSON:-$SJ}"
+
+if [ ! -f "$SJ" ]; then
+  echo "tldraw server.json not found at $SJ; is tldraw Desktop running?" >&2
+  exit 1
+fi
+
+read_field() {
+  python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$SJ" "$1"
+}
+PORT=$(read_field port)
+TOKEN=$(read_field token)
+BASE="http://localhost:$PORT"
+
+# localhost must bypass any HTTP proxy configured in the environment
+CURL=(curl -sS --noproxy '*')
+
+cmd="${1:-}"
+case "$cmd" in
+  readme)
+    "${CURL[@]}" "$BASE/readme"
+    ;;
+  search)
+    "${CURL[@]}" -X POST "$BASE/api/search" -H 'content-type: text/plain' \
+      -H "authorization: Bearer $TOKEN" --data-binary @-
+    ;;
+  exec)
+    [ -n "${2:-}" ] || { echo "usage: tq exec <docId> < code.js" >&2; exit 2; }
+    "${CURL[@]}" -X POST "$BASE/api/doc/$2/exec" -H 'content-type: text/plain' \
+      -H "authorization: Bearer $TOKEN" --data-binary @-
+    ;;
+  GET|DELETE)
+    "${CURL[@]}" -X "$cmd" "$BASE$2" -H "authorization: Bearer $TOKEN"
+    ;;
+  POST)
+    "${CURL[@]}" -X POST "$BASE$2" -H 'content-type: application/json' \
+      -H "authorization: Bearer $TOKEN" --data-binary @-
+    ;;
+  *)
+    sed -n '2,9p' "$0" >&2
+    exit 2
+    ;;
+esac
+echo
